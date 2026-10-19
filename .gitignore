@@ -37,12 +37,21 @@ test_output.*
 scratch/
 dummy_test_*
 
-# Prohibited AI & Agent Transcripts
+# Prohibited AI, Agent Transcripts, Prompts & Superpowers Specs/Plans
 GEMINI.md
 CLAUDE.md
 .agents/
 .agent/
 .superpowers/
+docs/
+*.prompt
+*.agent
+*.spec.md
+*.plan.md
+prompt*
+dump.*
+middle.txt
+extracted.json
 
 # OS metadata
 Thumbs.db
