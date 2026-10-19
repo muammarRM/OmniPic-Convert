@@ -50,8 +50,14 @@ class TestConverter(unittest.TestCase):
         self.assertGreaterEqual(res_high["output_size"], res_low["output_size"])
         if os.path.exists("test_out_high.jpg"):
             os.remove("test_out_high.jpg")
-        if os.path.exists("test_out_low.jpg"):
-            os.remove("test_out_low.jpg")
+    def test_convert_to_target_size_kb(self):
+        target_kb = 20
+        res = convert_image(self.test_img_path, "test_out_target.jpg", target_format="JPG", target_size_kb=target_kb)
+        self.assertTrue(os.path.exists(res["output_path"]))
+        # Output file size must be less than or equal to target_kb * 1024 (with a small margin of tolerance or strictly <=)
+        self.assertLessEqual(res["output_size"], (target_kb + 2) * 1024)
+        if os.path.exists("test_out_target.jpg"):
+            os.remove("test_out_target.jpg")
 
 if __name__ == "__main__":
     unittest.main()

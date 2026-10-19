@@ -3,3 +3,4 @@ pillow>=11.0.0
 pillow-heif>=1.8.0
 requests>=2.31.0
 pyinstaller>=6.0.0
+windnd>=1.0.7

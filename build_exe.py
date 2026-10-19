@@ -16,6 +16,7 @@ def build():
         "--name", "OmniPic-Convert",
         "--collect-all", "customtkinter",
         "--collect-all", "pillow_heif",
+        "--collect-all", "windnd",
         "main.py",
     ]
     

@@ -19,8 +19,9 @@
 - **Batch Processing:** Masukkan puluhan file sekaligus dan ubah semuanya hanya dengan 1 klik.
 - **Proteksi Transparansi:** Konversi file transparan (PNG/WebP) ke JPG secara otomatis diberi latar belakang putih bersih tanpa menghasilkan visual artefak hitam.
 
-### 2. ⚡ Mesin Kompresi & Optimasi Ukuran
-- **Quality Slider (10% - 100%):** Kontrol granular antara kualitas visual dan rasio kompresi.
+### 2. ⚡ Mesin Kompresi Fleksibel (Kualitas % & Target Ukuran KB)
+- **Mode Target Ukuran (KB):** Tentukan batas maksimal ukuran file output yang diinginkan (misal: tepat di bawah `200 KB`, `100 KB`, `500 KB`, atau `1 MB`). Sangat berguna untuk kebutuhan upload portal web, CPNS, visa, atau formulir online yang membatasi ukuran file.
+- **Mode Kualitas (10% - 100%):** Kontrol manual slider kualitas gambar.
 - **Penskalaan Dimensi (Resize):** Opsi instan untuk mengecilkan dimensi (`75%`, `50%`, `25%`, atau custom width).
 - **Statistik Kompresi:** Menampilkan rincian hemat byte (*space saved*) setelah proses selesai.
 
@@ -29,8 +30,9 @@
 - Mendukung postingan tunggal (*single post*) maupun album multi-slide (*carousel*).
 - **Direct Pipeline:** Foto yang diunduh dari Instagram bisa langsung dikirim ke antrean Converter dengan tombol **"Kirim ke Converter"**.
 
-### 4. 💻 Antarmuka Desktop Modern (Dark Mode)
-- Dibangun dengan **CustomTkinter** untuk tampilan elegan ala Windows 11.
+### 4. 💻 Antarmuka Desktop Modern & Native Drag & Drop
+- **Native Drag & Drop:** Cukup tarik file gambar dari Windows Explorer dan lepaskan di area aplikasi untuk langsung memprosesnya.
+- Dibangun dengan **CustomTkinter** untuk tampilan elegan ala Windows 11 (Dark Mode).
 - Multi-threading terisolasi: Aplikasi tidak pernah macet (*freeze*) saat memproses file besar.
 
 ---

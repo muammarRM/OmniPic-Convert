@@ -18,6 +18,28 @@ class OmniPicApp(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         self._build_ui()
+        self._setup_global_drag_and_drop()
+
+    def _setup_global_drag_and_drop(self):
+        """Hook global drag and drop so dropping anywhere adds to Converter tab."""
+        try:
+            import windnd
+            def _on_drop(files):
+                cleaned = []
+                for item in files:
+                    if isinstance(item, bytes):
+                        try:
+                            s = item.decode("utf-8")
+                        except UnicodeDecodeError:
+                            s = item.decode("mbcs", errors="ignore")
+                    else:
+                        s = str(item)
+                    cleaned.append(s)
+                self.tab_converter.add_files(cleaned)
+                self.tabview.set("🔄 Konverter & Kompresi Gambar (Offline)")
+            self.after(300, lambda: windnd.hook_dropfiles(self, func=_on_drop, force_unicode=True))
+        except Exception as e:
+            print(f"Global Drag & Drop note: {e}")
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=1)

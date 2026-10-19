@@ -1,8 +1,14 @@
-"""Converter and Compressor Tab for OmniPic-Convert."""
+"""Converter and Compressor Tab for OmniPic-Convert with Target KB & Drag-and-Drop."""
 import os
 import threading
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
+
+try:
+    import windnd
+    WINDND_AVAILABLE = True
+except ImportError:
+    WINDND_AVAILABLE = False
 
 from src.core.converter import convert_image, SUPPORTED_FORMATS
 from src.utils.helpers import format_bytes, validate_image_format
@@ -15,8 +21,35 @@ class ConverterTab(ctk.CTkFrame):
         self.queued_files: list[str] = []
         self.is_converting = False
         self.output_directory: str | None = None
+        self.compress_mode = "quality"  # "quality" or "target_kb"
         
         self._build_ui()
+        self._setup_drag_and_drop()
+
+    def _setup_drag_and_drop(self):
+        """Initialize native Windows drag-and-drop hook."""
+        if WINDND_AVAILABLE:
+            def hook():
+                try:
+                    windnd.hook_dropfiles(self, func=self._on_drop_files, force_unicode=True)
+                    windnd.hook_dropfiles(self.scroll_list, func=self._on_drop_files, force_unicode=True)
+                except Exception as e:
+                    print(f"Drag & Drop hook note: {e}")
+            self.after(300, hook)
+
+    def _on_drop_files(self, files):
+        """Callback when files are dropped from Windows Explorer."""
+        cleaned_paths: list[str] = []
+        for item in files:
+            if isinstance(item, bytes):
+                try:
+                    path_str = item.decode("utf-8")
+                except UnicodeDecodeError:
+                    path_str = item.decode("mbcs", errors="ignore")
+            else:
+                path_str = str(item)
+            cleaned_paths.append(path_str)
+        self.add_files(cleaned_paths)
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=1)
@@ -59,7 +92,7 @@ class ConverterTab(ctk.CTkFrame):
         )
         self.lbl_queue_stats.grid(row=0, column=2, sticky="e")
 
-        # Center: Scrollable File List
+        # Center: Scrollable File List (Drop Target)
         self.scroll_list = ctk.CTkScrollableFrame(
             self,
             corner_radius=10,
@@ -72,14 +105,14 @@ class ConverterTab(ctk.CTkFrame):
 
         self.empty_label = ctk.CTkLabel(
             self.scroll_list,
-            text="Tarik & lepas gambar ke sini, atau klik tombol '+ Tambah Gambar'\n\nFormat didukung: HEIC, PNG, JPG, WEBP, AVIF, BMP, TIFF, ICO, GIF",
+            text="📥 Tarik & Lepas (Drag & Drop) gambar ke sini langsung dari Windows Explorer\n\natau klik tombol '+ Tambah Gambar' di atas\n\nFormat didukung: HEIC (iPhone), PNG, JPG, WEBP, AVIF, BMP, TIFF, ICO, GIF",
             font=ctk.CTkFont(size=13),
-            text_color="#777777",
+            text_color="#888888",
             justify="center",
         )
         self.empty_label.pack(pady=60)
 
-        # Bottom Options & Controls
+        # Bottom Options & Controls Panel
         options_panel = ctk.CTkFrame(
             self,
             corner_radius=10,
@@ -88,77 +121,133 @@ class ConverterTab(ctk.CTkFrame):
             border_color=("#E0E0E0", "#383838"),
         )
         options_panel.grid(row=2, column=0, padx=20, pady=(10, 15), sticky="ew")
-        options_panel.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        options_panel.grid_columnconfigure(1, weight=1)
 
-        # Option: Target Format
-        ctk.CTkLabel(options_panel, text="Format Target:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=0, padx=15, pady=(10, 2), sticky="w"
-        )
+        # Col 0: Target Format
+        col_format = ctk.CTkFrame(options_panel, fg_color="transparent")
+        col_format.grid(row=0, column=0, padx=15, pady=10, sticky="nw")
+        
+        ctk.CTkLabel(col_format, text="Format Target:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(0, 4))
         self.combo_format = ctk.CTkComboBox(
-            options_panel,
+            col_format,
             values=SUPPORTED_FORMATS,
             state="readonly",
             width=130,
             corner_radius=8,
         )
         self.combo_format.set("WEBP")
-        self.combo_format.grid(row=1, column=0, padx=15, pady=(0, 10), sticky="w")
+        self.combo_format.pack(anchor="w")
 
-        # Option: Quality Slider
-        quality_frame = ctk.CTkFrame(options_panel, fg_color="transparent")
-        quality_frame.grid(row=0, column=1, rowspan=2, padx=15, pady=5, sticky="ew")
-        quality_frame.grid_columnconfigure(0, weight=1)
+        # Col 1: Compression Mode (Quality % vs Target Size in KB)
+        col_comp = ctk.CTkFrame(options_panel, fg_color="transparent")
+        col_comp.grid(row=0, column=1, padx=15, pady=10, sticky="ew")
+        col_comp.grid_columnconfigure(0, weight=1)
 
-        self.lbl_quality = ctk.CTkLabel(
-            quality_frame,
-            text="Kualitas: 85%",
-            font=ctk.CTkFont(size=12, weight="bold"),
+        top_comp_bar = ctk.CTkFrame(col_comp, fg_color="transparent")
+        top_comp_bar.pack(fill="x", pady=(0, 4))
+        
+        ctk.CTkLabel(top_comp_bar, text="Mode Kompresi:", font=ctk.CTkFont(size=12, weight="bold")).pack(side="left")
+        
+        self.seg_mode = ctk.CTkSegmentedButton(
+            top_comp_bar,
+            values=["Kualitas (%)", "Target Ukuran (KB)"],
+            command=self._on_mode_change,
+            height=26,
+            corner_radius=6,
         )
-        self.lbl_quality.pack(anchor="w", pady=(5, 2))
+        self.seg_mode.set("Kualitas (%)")
+        self.seg_mode.pack(side="right")
+
+        # Container for Quality Slider
+        self.frame_quality = ctk.CTkFrame(col_comp, fg_color="transparent")
+        self.frame_quality.pack(fill="x")
+        
+        self.lbl_quality = ctk.CTkLabel(
+            self.frame_quality,
+            text="Kualitas: 85%",
+            font=ctk.CTkFont(size=12),
+        )
+        self.lbl_quality.pack(anchor="w", pady=(2, 2))
 
         self.slider_quality = ctk.CTkSlider(
-            quality_frame,
+            self.frame_quality,
             from_=10,
             to=100,
             number_of_steps=90,
             command=self._on_quality_change,
-            width=160,
+            height=16,
         )
         self.slider_quality.set(85)
-        self.slider_quality.pack(fill="x", pady=(0, 5))
+        self.slider_quality.pack(fill="x")
 
-        # Option: Resize scale
-        ctk.CTkLabel(options_panel, text="Dimensi / Ukuran:", font=ctk.CTkFont(size=12, weight="bold")).grid(
-            row=0, column=2, padx=15, pady=(10, 2), sticky="w"
+        # Container for Target Size KB
+        self.frame_target_kb = ctk.CTkFrame(col_comp, fg_color="transparent")
+        
+        kb_input_row = ctk.CTkFrame(self.frame_target_kb, fg_color="transparent")
+        kb_input_row.pack(fill="x", pady=(2, 4))
+        
+        ctk.CTkLabel(kb_input_row, text="Maksimal Ukuran File (KB):", font=ctk.CTkFont(size=12)).pack(side="left")
+        
+        self.entry_target_kb = ctk.CTkEntry(
+            kb_input_row,
+            width=90,
+            height=28,
+            placeholder_text="200",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            corner_radius=6,
         )
+        self.entry_target_kb.insert(0, "200")
+        self.entry_target_kb.pack(side="left", padx=8)
+
+        # Preset Quick Chips
+        chips_row = ctk.CTkFrame(self.frame_target_kb, fg_color="transparent")
+        chips_row.pack(fill="x")
+        
+        for chip_text, chip_val in [("100 KB", "100"), ("200 KB", "200"), ("500 KB", "500"), ("1 MB", "1024")]:
+            btn_chip = ctk.CTkButton(
+                chips_row,
+                text=chip_text,
+                width=62,
+                height=22,
+                fg_color="#3A3A3A",
+                hover_color="#505050",
+                font=ctk.CTkFont(size=10),
+                corner_radius=4,
+                command=lambda v=chip_val: self._set_target_kb(v),
+            )
+            btn_chip.pack(side="left", padx=2)
+
+        # Col 2: Resize scale
+        col_resize = ctk.CTkFrame(options_panel, fg_color="transparent")
+        col_resize.grid(row=0, column=2, padx=15, pady=10, sticky="nw")
+
+        ctk.CTkLabel(col_resize, text="Dimensi / Skala:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(0, 4))
         self.combo_resize = ctk.CTkComboBox(
-            options_panel,
+            col_resize,
             values=["Asli (100%)", "75%", "50%", "25%"],
             state="readonly",
-            width=130,
+            width=120,
             corner_radius=8,
         )
         self.combo_resize.set("Asli (100%)")
-        self.combo_resize.grid(row=1, column=2, padx=15, pady=(0, 10), sticky="w")
+        self.combo_resize.pack(anchor="w")
 
-        # Option: Output destination
-        dest_frame = ctk.CTkFrame(options_panel, fg_color="transparent")
-        dest_frame.grid(row=0, column=3, rowspan=2, padx=15, pady=5, sticky="ew")
+        # Col 3: Output destination
+        col_dest = ctk.CTkFrame(options_panel, fg_color="transparent")
+        col_dest.grid(row=0, column=3, padx=15, pady=10, sticky="nw")
 
-        ctk.CTkLabel(dest_frame, text="Folder Output:", font=ctk.CTkFont(size=12, weight="bold")).pack(
-            anchor="w", pady=(5, 2)
-        )
+        ctk.CTkLabel(col_dest, text="Folder Output:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", pady=(0, 4))
         self.btn_dest = ctk.CTkButton(
-            dest_frame,
+            col_dest,
             text="Folder Asal",
             fg_color="#3B3B3B",
             hover_color="#4C4C4C",
             command=self._select_output_dir,
-            width=130,
+            width=120,
             height=28,
             corner_radius=6,
         )
-        self.btn_dest.pack(anchor="w", pady=(0, 5))
+        self.btn_dest.pack(anchor="w")
 
         # Execution Bar (Progress + CTA)
         exec_bar = ctk.CTkFrame(self, fg_color="transparent")
@@ -188,6 +277,20 @@ class ConverterTab(ctk.CTkFrame):
         )
         self.lbl_status.grid(row=4, column=0, padx=20, pady=(0, 10), sticky="w")
 
+    def _on_mode_change(self, mode_str):
+        if mode_str == "Target Ukuran (KB)":
+            self.compress_mode = "target_kb"
+            self.frame_quality.pack_forget()
+            self.frame_target_kb.pack(fill="x")
+        else:
+            self.compress_mode = "quality"
+            self.frame_target_kb.pack_forget()
+            self.frame_quality.pack(fill="x")
+
+    def _set_target_kb(self, val_str: str):
+        self.entry_target_kb.delete(0, "end")
+        self.entry_target_kb.insert(0, val_str)
+
     def _on_quality_change(self, value):
         self.lbl_quality.configure(text=f"Kualitas: {int(value)}%")
 
@@ -209,12 +312,15 @@ class ConverterTab(ctk.CTkFrame):
 
     def add_files(self, paths: list[str]):
         """Add files to queue and refresh list UI."""
+        added_count = 0
         for p in paths:
             if os.path.isfile(p) and p not in self.queued_files:
                 ext = os.path.splitext(p)[1]
                 if validate_image_format(ext):
                     self.queued_files.append(p)
-        self._refresh_list_ui()
+                    added_count += 1
+        if added_count > 0:
+            self._refresh_list_ui()
 
     def _clear_queue(self):
         if self.is_converting:
@@ -231,7 +337,6 @@ class ConverterTab(ctk.CTkFrame):
             self.btn_dest.configure(text=f"📁 {display_name}")
 
     def _refresh_list_ui(self):
-        # Clear existing rows
         for widget in self.scroll_list.winfo_children():
             widget.destroy()
 
@@ -239,9 +344,9 @@ class ConverterTab(ctk.CTkFrame):
         if count == 0:
             self.empty_label = ctk.CTkLabel(
                 self.scroll_list,
-                text="Tarik & lepas gambar ke sini, atau klik tombol '+ Tambah Gambar'\n\nFormat didukung: HEIC, PNG, JPG, WEBP, AVIF, BMP, TIFF, ICO, GIF",
+                text="📥 Tarik & Lepas (Drag & Drop) gambar ke sini langsung dari Windows Explorer\n\natau klik tombol '+ Tambah Gambar' di atas\n\nFormat didukung: HEIC (iPhone), PNG, JPG, WEBP, AVIF, BMP, TIFF, ICO, GIF",
                 font=ctk.CTkFont(size=13),
-                text_color="#777777",
+                text_color="#888888",
                 justify="center",
             )
             self.empty_label.pack(pady=60)
@@ -263,7 +368,6 @@ class ConverterTab(ctk.CTkFrame):
             row_frame.pack(fill="x", pady=2, padx=2)
             row_frame.grid_columnconfigure(1, weight=1)
 
-            # Icon / Index
             ctk.CTkLabel(
                 row_frame,
                 text=f"{idx + 1}.",
@@ -271,7 +375,6 @@ class ConverterTab(ctk.CTkFrame):
                 width=30,
             ).grid(row=0, column=0, padx=5, pady=5)
 
-            # File name
             name = os.path.basename(file_path)
             ctk.CTkLabel(
                 row_frame,
@@ -280,7 +383,6 @@ class ConverterTab(ctk.CTkFrame):
                 anchor="w",
             ).grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
-            # File size
             size_str = format_bytes(os.path.getsize(file_path)) if os.path.exists(file_path) else "0 B"
             ctk.CTkLabel(
                 row_frame,
@@ -291,7 +393,6 @@ class ConverterTab(ctk.CTkFrame):
                 anchor="e",
             ).grid(row=0, column=2, padx=5, pady=5)
 
-            # Delete button
             btn_del = ctk.CTkButton(
                 row_frame,
                 text="✕",
@@ -311,20 +412,25 @@ class ConverterTab(ctk.CTkFrame):
 
     def _start_conversion(self):
         if not self.queued_files:
-            messagebox.showinfo("Antrean Kosong", "Silakan tambahkan setidaknya 1 gambar terlebih dahulu.")
+            messagebox.showinfo("Antrean Kosong", "Silakan tambahkan atau tarik (drag & drop) gambar ke sini.")
             return
 
         if self.is_converting:
             return
 
-        self.is_converting = True
-        self.btn_convert.configure(state="disabled", text="Sedang Memproses...")
-        self.progress_bar.set(0)
-        self.lbl_status.configure(text="Memulai konversi...", text_color="#3399FF")
-
-        # Parse options
         target_fmt = self.combo_format.get()
+        target_kb = None
         quality = int(self.slider_quality.get())
+
+        if self.compress_mode == "target_kb":
+            try:
+                target_kb = int(self.entry_target_kb.get().strip())
+                if target_kb <= 0:
+                    raise ValueError
+            except ValueError:
+                messagebox.showerror("Target Ukuran Salah", "Masukkan angka target ukuran KB yang valid (contoh: 200).")
+                return
+
         resize_str = self.combo_resize.get()
         resize_pct = 100
         if "75%" in resize_str:
@@ -334,15 +440,19 @@ class ConverterTab(ctk.CTkFrame):
         elif "25%" in resize_str:
             resize_pct = 25
 
-        # Background thread execution
+        self.is_converting = True
+        self.btn_convert.configure(state="disabled", text="Sedang Memproses...")
+        self.progress_bar.set(0)
+        self.lbl_status.configure(text="Memulai konversi...", text_color="#3399FF")
+
         thread = threading.Thread(
             target=self._run_conversion_worker,
-            args=(list(self.queued_files), target_fmt, quality, resize_pct, self.output_directory),
+            args=(list(self.queued_files), target_fmt, quality, target_kb, resize_pct, self.output_directory),
             daemon=True,
         )
         thread.start()
 
-    def _run_conversion_worker(self, files: list[str], target_fmt: str, quality: int, resize_pct: int, output_dir: str | None):
+    def _run_conversion_worker(self, files: list[str], target_fmt: str, quality: int, target_kb: int | None, resize_pct: int, output_dir: str | None):
         total = len(files)
         success_count = 0
         total_original_bytes = 0
@@ -354,6 +464,7 @@ class ConverterTab(ctk.CTkFrame):
                     input_path=file_path,
                     target_format=target_fmt,
                     quality=quality,
+                    target_size_kb=target_kb,
                     resize_percent=resize_pct,
                     output_dir=output_dir,
                 )
@@ -373,13 +484,14 @@ class ConverterTab(ctk.CTkFrame):
             total,
             total_original_bytes,
             total_output_bytes,
+            target_kb,
         )
 
     def _update_progress(self, progress: float, current: int, total: int):
         self.progress_bar.set(progress)
         self.lbl_status.configure(text=f"Memproses gambar {current} dari {total}...")
 
-    def _finish_conversion(self, success: int, total: int, orig_bytes: int, out_bytes: int):
+    def _finish_conversion(self, success: int, total: int, orig_bytes: int, out_bytes: int, target_kb: int | None):
         self.is_converting = False
         self.btn_convert.configure(state="normal", text="⚡ Mulai Konversi & Kompresi")
         self.progress_bar.set(1.0)
@@ -387,8 +499,9 @@ class ConverterTab(ctk.CTkFrame):
         saved_bytes = orig_bytes - out_bytes
         pct = (saved_bytes / orig_bytes * 100) if orig_bytes > 0 else 0
 
+        target_note = f"\nTarget Ukuran: <= {target_kb} KB per file" if target_kb else ""
         msg = (
-            f"✅ Selesai! Berhasil mengonversi {success} dari {total} gambar.\n"
+            f"✅ Selesai! Berhasil mengonversi {success} dari {total} gambar.{target_note}\n"
             f"Ukuran Asal: {format_bytes(orig_bytes)} ➔ Ukuran Baru: {format_bytes(out_bytes)}\n"
             f"Hemat Ruang: {format_bytes(saved_bytes)} ({pct:.1f}% kompresi)"
         )
