@@ -12,7 +12,7 @@ class TestConverter(unittest.TestCase):
     def tearDown(self):
         if os.path.exists(self.test_img_path):
             os.remove(self.test_img_path)
-        for f in ["test_out.jpg", "test_out.webp", "test_out.heic", "test_out.png"]:
+        for f in ["test_out.jpg", "test_out.webp", "test_out.heic", "test_out.png", "test_out_high.jpg", "test_out_low.jpg", "test_out_target.jpg"]:
             if os.path.exists(f):
                 os.remove(f)
 
