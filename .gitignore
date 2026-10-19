@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# PyInstaller
+# Usually these files are written by a python script run, they may be useful for debugging
+*.manifest
+
+# Unit test / coverage reports
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Scratch & Temporary Testing Files (Strict Hygiene)
+temp.*
+*.tmp
+*.bak
+test_output.*
+scratch/
+dummy_test_*
+
+# Prohibited AI & Agent Transcripts
+GEMINI.md
+CLAUDE.md
+.agents/
+.agent/
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+.DS_Store
