@@ -11,7 +11,7 @@ def build():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconfirm",
-        "--onedir",
+        "--onefile",
         "--windowed",
         "--name", "OmniPic-Convert",
         "--collect-all", "customtkinter",
@@ -23,10 +23,20 @@ def build():
     result = subprocess.run(cmd)
     
     if result.returncode == 0:
-        exe_path = os.path.abspath(os.path.join("dist", "OmniPic-Convert", "OmniPic-Convert.exe"))
+        exe_path = os.path.abspath(os.path.join("dist", "OmniPic-Convert.exe"))
+        # Copy to root folder for instant access
+        root_exe = os.path.abspath("OmniPic-Convert.exe")
+        try:
+            import shutil
+            shutil.copy2(exe_path, root_exe)
+            print(f"Copied standalone executable to root: {root_exe}")
+        except Exception as e:
+            print(f"Note: Could not copy to root: {e}")
+
         print("\n" + "=" * 60)
-        print("[SUCCESS] BUILD COMPLETE!")
+        print("[SUCCESS] STANDALONE ONE-FILE BUILD COMPLETE!")
         print(f"Executable Location: {exe_path}")
+        print(f"Root Executable:     {root_exe}")
         print("=" * 60)
     else:
         print("\n[ERROR] Build failed with return code:", result.returncode)
