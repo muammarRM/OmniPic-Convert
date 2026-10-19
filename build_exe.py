@@ -2,12 +2,20 @@
 import subprocess
 import sys
 import os
+import time
 
 def build():
     print("=" * 60)
     print("  OmniPic-Convert — Building Windows Standalone Executable  ")
     print("=" * 60)
     
+    # Close any running instance of OmniPic-Convert to avoid WinError 32
+    try:
+        subprocess.run(["taskkill", "/f", "/im", "OmniPic-Convert.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.5)
+    except Exception:
+        pass
+
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--noconfirm",
@@ -16,7 +24,7 @@ def build():
         "--name", "OmniPic-Convert",
         "--collect-all", "customtkinter",
         "--collect-all", "pillow_heif",
-        "--collect-all", "windnd",
+        "--collect-all", "tkinterdnd2",
         "main.py",
     ]
     
@@ -25,7 +33,6 @@ def build():
     
     if result.returncode == 0:
         exe_path = os.path.abspath(os.path.join("dist", "OmniPic-Convert.exe"))
-        # Copy to root folder for instant access
         root_exe = os.path.abspath("OmniPic-Convert.exe")
         try:
             import shutil

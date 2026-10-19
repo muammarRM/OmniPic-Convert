@@ -1,12 +1,19 @@
-"""Main desktop application window for OmniPic-Convert."""
+"""Main desktop application window for OmniPic-Convert with native stable Drag & Drop."""
 import customtkinter as ctk
+from tkinterdnd2 import TkinterDnD, DND_FILES
 from src.ui.tab_converter import ConverterTab
 from src.ui.tab_instagram import InstagramTab
 
-class OmniPicApp(ctk.CTk):
-    """Main application container."""
+class OmniPicApp(ctk.CTk, TkinterDnD.DnDWrapper):
+    """Main application container with stable TkinterDnD drag-and-drop."""
     def __init__(self):
         super().__init__()
+
+        # Initialize TkinterDnD wrapper safely
+        try:
+            self.TkdndVersion = TkinterDnD._require(self)
+        except Exception as e:
+            print(f"TkinterDnD initialization note: {e}")
 
         # Window Configuration
         self.title("OmniPic-Convert — Offline Image Converter, Compressor & Instagram Studio")
@@ -21,25 +28,23 @@ class OmniPicApp(ctk.CTk):
         self._setup_global_drag_and_drop()
 
     def _setup_global_drag_and_drop(self):
-        """Hook global drag and drop so dropping anywhere adds to Converter tab."""
+        """Register native drag and drop on main window."""
         try:
-            import windnd
-            def _on_drop(files):
-                cleaned = []
-                for item in files:
-                    if isinstance(item, bytes):
-                        try:
-                            s = item.decode("utf-8")
-                        except UnicodeDecodeError:
-                            s = item.decode("mbcs", errors="ignore")
-                    else:
-                        s = str(item)
-                    cleaned.append(s)
-                self.tab_converter.add_files(cleaned)
-                self.tabview.set("🔄 Konverter & Kompresi Gambar (Offline)")
-            self.after(300, lambda: windnd.hook_dropfiles(self, func=_on_drop, force_unicode=True))
+            self.drop_target_register(DND_FILES)
+            self.dnd_bind("<<Drop>>", self._on_global_drop)
         except Exception as e:
-            print(f"Global Drag & Drop note: {e}")
+            print(f"Global Drag & Drop register note: {e}")
+
+    def _on_global_drop(self, event):
+        """Handler when files are dropped anywhere onto the application window."""
+        try:
+            raw_data = getattr(event, "data", "")
+            if raw_data:
+                files = list(self.tk.splitlist(raw_data))
+                self.tab_converter.add_files(files)
+                self.tabview.set("🔄 Konverter & Kompresi Gambar (Offline)")
+        except Exception as e:
+            print(f"Error handling dropped files: {e}")
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=1)
@@ -72,7 +77,7 @@ class OmniPicApp(ctk.CTk):
 
         version_lbl = ctk.CTkLabel(
             header,
-            text="v1.0.0 • muammarRM/OmniPic-Convert",
+            text="v1.1.0 • muammarRM/OmniPic-Convert",
             font=ctk.CTkFont(size=11),
             text_color="#888888",
         )
@@ -96,7 +101,7 @@ class OmniPicApp(ctk.CTk):
         self.tabview.add(tab_ig_name)
 
         # Embed Converter Tab
-        self.tab_converter = ConverterTab(master=self.tabview.tab(tab_conv_name))
+        self.tab_converter = ConverterTab(master=self.tabview.tab(tab_conv_name), app_root=self)
         self.tab_converter.pack(fill="both", expand=True)
 
         # Embed Instagram Tab

@@ -1,55 +1,51 @@
-"""Converter and Compressor Tab for OmniPic-Convert with Target KB & Drag-and-Drop."""
+"""Converter and Compressor Tab for OmniPic-Convert with Target KB & Stable TkinterDnD."""
 import os
 import threading
 from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 try:
-    import windnd
-    WINDND_AVAILABLE = True
+    from tkinterdnd2 import DND_FILES
+    DND_AVAILABLE = True
 except ImportError:
-    WINDND_AVAILABLE = False
+    DND_AVAILABLE = False
 
 from src.core.converter import convert_image, SUPPORTED_FORMATS
 from src.utils.helpers import format_bytes, validate_image_format
 
 class ConverterTab(ctk.CTkFrame):
     """Tab for offline multi-format image conversion and compression."""
-    def __init__(self, master, on_queue_change=None, **kwargs):
+    def __init__(self, master, on_queue_change=None, app_root=None, **kwargs):
         super().__init__(master, **kwargs)
         self.on_queue_change = on_queue_change
+        self.app_root = app_root
         self.queued_files: list[str] = []
         self.is_converting = False
         self.output_directory: str | None = None
         self.compress_mode = "quality"  # "quality" or "target_kb"
         
         self._build_ui()
-        self._setup_drag_and_drop()
+        self._setup_local_dnd()
 
-    def _setup_drag_and_drop(self):
-        """Initialize native Windows drag-and-drop hook."""
-        if WINDND_AVAILABLE:
-            def hook():
-                try:
-                    windnd.hook_dropfiles(self, func=self._on_drop_files, force_unicode=True)
-                    windnd.hook_dropfiles(self.scroll_list, func=self._on_drop_files, force_unicode=True)
-                except Exception as e:
-                    print(f"Drag & Drop hook note: {e}")
-            self.after(300, hook)
+    def _setup_local_dnd(self):
+        """Register local drop target on the scroll list if supported."""
+        if DND_AVAILABLE:
+            try:
+                # Register drop target on the scrollable frame
+                self.scroll_list.drop_target_register(DND_FILES)
+                self.scroll_list.dnd_bind("<<Drop>>", self._on_drop_event)
+            except Exception:
+                pass
 
-    def _on_drop_files(self, files):
-        """Callback when files are dropped from Windows Explorer."""
-        cleaned_paths: list[str] = []
-        for item in files:
-            if isinstance(item, bytes):
-                try:
-                    path_str = item.decode("utf-8")
-                except UnicodeDecodeError:
-                    path_str = item.decode("mbcs", errors="ignore")
-            else:
-                path_str = str(item)
-            cleaned_paths.append(path_str)
-        self.add_files(cleaned_paths)
+    def _on_drop_event(self, event):
+        """Handler for drop events on the scroll list."""
+        try:
+            raw_data = getattr(event, "data", "")
+            if raw_data:
+                files = list(self.tk.splitlist(raw_data))
+                self.add_files(files)
+        except Exception as e:
+            print(f"Drop error: {e}")
 
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=1)
@@ -314,10 +310,12 @@ class ConverterTab(ctk.CTkFrame):
         """Add files to queue and refresh list UI."""
         added_count = 0
         for p in paths:
-            if os.path.isfile(p) and p not in self.queued_files:
-                ext = os.path.splitext(p)[1]
+            # Clean possible curly brackets or quotes from drag-and-drop
+            clean_p = p.strip('"{}\'')
+            if os.path.isfile(clean_p) and clean_p not in self.queued_files:
+                ext = os.path.splitext(clean_p)[1]
                 if validate_image_format(ext):
-                    self.queued_files.append(p)
+                    self.queued_files.append(clean_p)
                     added_count += 1
         if added_count > 0:
             self._refresh_list_ui()
