@@ -40,6 +40,7 @@ GEMINI.md
 CLAUDE.md
 .agents/
 .agent/
+.superpowers/
 
 # OS metadata
 Thumbs.db
