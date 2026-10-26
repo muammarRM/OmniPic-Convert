@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     'image converter free',
   ],
   authors: [{ name: 'OmniPic' }],
+  other: {
+    monetag: '6299037324741d2d89d09b8da71c3d53',
+  },
 };
 
 export const viewport = {
@@ -48,6 +51,7 @@ export default function RootLayout({
   return (
     <html lang="id" className="dark">
       <head>
+        <meta name="monetag" content="6299037324741d2d89d09b8da71c3d53" />
         {adsenseId && (
           <Script
             id="adsbygoogle-init"
