@@ -15,9 +15,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'OmniPic Studio - Universal Image Converter, Compressor & Instagram Grabber',
+  title: 'OmniPic - Kompres & Konversi Foto Online Gratis',
   description:
-    'Konversi dan kompres foto gratis berbasis browser: Target ukuran KB (CPNS/KTP), iPhone HEIC ke JPG, resize pas foto 2x3, 3x4, 4x6, dan pengunduh foto Instagram publik. 100% aman dan privat.',
+    'Kecilkan ukuran foto ke target KB (200 KB untuk CPNS/KTP), ubah format JPG, PNG, WebP, HEIC iPhone, dan simpan foto Instagram secara cepat, gratis, dan 100% aman di browser.',
   keywords: [
     'kompres foto 200 kb',
     'kompres foto cpns',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     'instagram photo downloader',
     'image converter free',
   ],
-  authors: [{ name: 'OmniPic Team' }],
+  authors: [{ name: 'OmniPic' }],
 };
 
 export const viewport = {
