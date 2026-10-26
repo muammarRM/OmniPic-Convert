@@ -53,6 +53,13 @@ dump.*
 middle.txt
 extracted.json
 
+# Web App (Next.js)
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/
+web/*.tsbuildinfo
+
 # OS metadata
 Thumbs.db
 Desktop.ini
