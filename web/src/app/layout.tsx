@@ -71,6 +71,12 @@ export default function RootLayout({
             __html: `(function(s){s.dataset.zone='12125317',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));`,
           }}
         />
+        {/* Monetag Tag Zone 12125319 */}
+        <script
+          src="https://5gvci.com/act/files/tag.min.js?z=12125319"
+          data-cfasync="false"
+          async
+        />
         {adsenseId && (
           <Script
             id="adsbygoogle-init"
