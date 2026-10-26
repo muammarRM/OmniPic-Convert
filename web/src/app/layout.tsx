@@ -52,6 +52,12 @@ export default function RootLayout({
     <html lang="id" className="dark">
       <head>
         <meta name="monetag" content="6299037324741d2d89d09b8da71c3d53" />
+        <script
+          src="https://quge5.com/88/tag.min.js"
+          data-zone="302183"
+          async
+          data-cfasync="false"
+        />
         {adsenseId && (
           <Script
             id="adsbygoogle-init"
