@@ -13,6 +13,7 @@ export interface ConvertOptions {
   flipVertical?: boolean;
   filter?: 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia';
   watermarkText?: string;
+  bgColor?: 'none' | 'red' | 'blue' | 'white';
 }
 
 export interface ConvertResult {
@@ -183,6 +184,70 @@ function renderToCanvas(
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, -width / 2, -height / 2, width, height);
   ctx.restore();
+
+  // Background color replacement (Merah / Biru Pas Foto Resmi)
+  const bgColor = options?.bgColor;
+  if (bgColor && bgColor !== 'none') {
+    const targetRgb =
+      bgColor === 'red'
+        ? [211, 47, 47] // #D32F2F (Merah Resmi CPNS)
+        : bgColor === 'blue'
+        ? [21, 101, 192] // #1565C0 (Biru Resmi CPNS)
+        : [255, 255, 255]; // Putih
+
+    try {
+      const imgData = ctx.getImageData(0, 0, canvasW, canvasH);
+      const data = imgData.data;
+
+      // Sample 4 corners to detect outer wall/background
+      const corners = [
+        0,
+        Math.max(0, (canvasW - 1) * 4),
+        Math.max(0, (canvasH - 1) * canvasW * 4),
+        Math.max(0, ((canvasH - 1) * canvasW + (canvasW - 1)) * 4),
+      ];
+
+      let sampleR = 0;
+      let sampleG = 0;
+      let sampleB = 0;
+      for (const idx of corners) {
+        sampleR += data[idx] || 255;
+        sampleG += data[idx + 1] || 255;
+        sampleB += data[idx + 2] || 255;
+      }
+      sampleR = Math.round(sampleR / 4);
+      sampleG = Math.round(sampleG / 4);
+      sampleB = Math.round(sampleB / 4);
+
+      const tolerance = 48;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+
+        if (a < 128) {
+          data[i] = targetRgb[0];
+          data[i + 1] = targetRgb[1];
+          data[i + 2] = targetRgb[2];
+          data[i + 3] = 255;
+        } else {
+          const diff = Math.sqrt(
+            Math.pow(r - sampleR, 2) + Math.pow(g - sampleG, 2) + Math.pow(b - sampleB, 2)
+          );
+          if (diff <= tolerance) {
+            data[i] = targetRgb[0];
+            data[i + 1] = targetRgb[1];
+            data[i + 2] = targetRgb[2];
+            data[i + 3] = 255;
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    } catch (e) {
+      console.warn('Background color replacement failed:', e);
+    }
+  }
 
   // Watermark text if provided
   if (options?.watermarkText && options.watermarkText.trim()) {

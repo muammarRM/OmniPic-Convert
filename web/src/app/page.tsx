@@ -35,6 +35,9 @@ import {
   ExternalLink,
   BookOpen,
   Scissors,
+  Volume2,
+  Share2,
+  Copy,
 } from 'lucide-react';
 
 interface FileQueueItem {
@@ -81,6 +84,7 @@ function HomeContent() {
   const [flipV, setFlipV] = useState<boolean>(false);
   const [filter, setFilter] = useState<'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia'>('none');
   const [watermarkText, setWatermarkText] = useState<string>('');
+  const [bgColor, setBgColor] = useState<'none' | 'red' | 'blue' | 'white'>('none');
 
   // Photo files queue
   const [files, setFiles] = useState<FileQueueItem[]>([]);
@@ -101,6 +105,10 @@ function HomeContent() {
   const [isGeneratingGif, setIsGeneratingGif] = useState<boolean>(false);
   const [gifResultUrl, setGifResultUrl] = useState<string | null>(null);
   const [capturedFrameUrl, setCapturedFrameUrl] = useState<string | null>(null);
+  const [isExtractingAudio, setIsExtractingAudio] = useState<boolean>(false);
+  const [extractedAudioUrl, setExtractedAudioUrl] = useState<string | null>(null);
+  const [extractedAudioName, setExtractedAudioName] = useState<string>('');
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const videoPlayerRef = useRef<HTMLVideoElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,16 +131,32 @@ function HomeContent() {
     }[];
   } | null>(null);
 
-  // Direct monetization trigger
-  const triggerMonetization = () => {
-    try {
-      if (typeof window !== 'undefined') {
+  // Smart First-Interaction Session Monetizer (1x per visit)
+  const triggerSmartMonetization = (force = false) => {
+    if (typeof window === 'undefined') return;
+    const hasTriggered = sessionStorage.getItem('omnipic_monetized_session');
+    if (!hasTriggered || force) {
+      sessionStorage.setItem('omnipic_monetized_session', 'true');
+      try {
         window.open('https://uplcm.com/4/12126165', '_blank');
+      } catch (e) {
+        console.warn('Monetization trigger notice:', e);
       }
-    } catch (e) {
-      console.warn('Monetization trigger notice:', e);
     }
   };
+
+  const triggerMonetization = (force = false) => triggerSmartMonetization(force);
+
+  useEffect(() => {
+    const handleFirstGesture = () => {
+      triggerSmartMonetization(false);
+    };
+
+    window.addEventListener('click', handleFirstGesture, { once: true });
+    return () => {
+      window.removeEventListener('click', handleFirstGesture);
+    };
+  }, []);
 
   // =========================================================================
   // PHOTO HANDLERS
@@ -178,6 +202,7 @@ function HomeContent() {
       flipVertical: flipV,
       filter,
       watermarkText: watermarkText.trim() || undefined,
+      bgColor,
     };
 
     try {
@@ -191,7 +216,7 @@ function HomeContent() {
 
   const handleProcessAllPhotos = async () => {
     if (files.length === 0 || isProcessingAll) return;
-    triggerMonetization();
+    triggerSmartMonetization(false);
     setIsProcessingAll(true);
 
     const updated = [...files];
@@ -210,7 +235,7 @@ function HomeContent() {
   const handleDownloadZip = async () => {
     const doneItems = files.filter((f) => f.status === 'done' && f.result);
     if (doneItems.length === 0) return;
-    triggerMonetization();
+    triggerSmartMonetization(false);
 
     const zip = new JSZip();
     doneItems.forEach((item, index) => {
@@ -249,13 +274,14 @@ function HomeContent() {
       setVideoUrl(url);
       setGifResultUrl(null);
       setCapturedFrameUrl(null);
+      setExtractedAudioUrl(null);
       setVideoStartTime(0);
     }
   };
 
   const handleCaptureFrame = () => {
     if (!videoPlayerRef.current) return;
-    triggerMonetization();
+    triggerSmartMonetization(false);
     const video = videoPlayerRef.current;
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 1280;
@@ -286,7 +312,7 @@ function HomeContent() {
 
   const handleGenerateGif = async () => {
     if (!videoPlayerRef.current || !videoUrl) return;
-    triggerMonetization();
+    triggerSmartMonetization(false);
     setIsGeneratingGif(true);
     setGifProgress(10);
 
@@ -324,6 +350,31 @@ function HomeContent() {
     }
   };
 
+  const handleExtractAudio = async () => {
+    if (!videoFile) return;
+    triggerSmartMonetization(false);
+    setIsExtractingAudio(true);
+    try {
+      const { extractAudioFromVideo } = await import('@/lib/audioExtractor');
+      const { blob, filename } = await extractAudioFromVideo(videoFile);
+      const url = URL.createObjectURL(blob);
+      setExtractedAudioUrl(url);
+      setExtractedAudioName(filename);
+    } catch (err) {
+      alert('Gagal mengekstrak audio dari video: ' + String(err));
+    } finally {
+      setIsExtractingAudio(false);
+    }
+  };
+
+  const handleCopyShareLink = () => {
+    if (typeof navigator !== 'undefined') {
+      navigator.clipboard.writeText('https://omni-pic-convert.vercel.app/');
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
   // =========================================================================
   // UNIVERSAL MEDIA DOWNLOADER HANDLERS
   // =========================================================================
@@ -331,7 +382,7 @@ function HomeContent() {
     e.preventDefault();
     if (!mediaInputUrl.trim()) return;
 
-    triggerMonetization();
+    triggerSmartMonetization(false);
     setIsMediaLoading(true);
     setMediaError(null);
     setMediaResult(null);
@@ -359,7 +410,7 @@ function HomeContent() {
 
   const handleSendMediaToPhotoStudio = async (mediaUrlToLoad: string) => {
     try {
-      triggerMonetization();
+      triggerSmartMonetization(false);
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(mediaUrlToLoad)}`;
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error('Gagal mengunduh media dari tautan');
@@ -518,6 +569,30 @@ function HomeContent() {
                     }`}
                   >
                     Pas Foto 4x6 cm
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setBgColor('red');
+                      setOutputFormat('image/jpeg');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      bgColor === 'red' ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    🔴 Latar Merah (CPNS Ganjil)
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setBgColor('blue');
+                      setOutputFormat('image/jpeg');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      bgColor === 'blue' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    🔵 Latar Biru (CPNS Genap)
                   </button>
                 </div>
               </div>
@@ -711,6 +786,20 @@ function HomeContent() {
                         <option value="contrast">Kontras Tajam (Teks Pudar)</option>
                         <option value="bright">Terangkan (Foto Redup)</option>
                         <option value="sepia">Sepia (Klasik)</option>
+                      </select>
+
+                      {/* Background Color Changer */}
+                      <select
+                        value={bgColor}
+                        onChange={(e) =>
+                          setBgColor(e.target.value as 'none' | 'red' | 'blue' | 'white')
+                        }
+                        className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+                      >
+                        <option value="none">Latar Belakang: Asli</option>
+                        <option value="red">🔴 Ganti Latar Merah (Tahun Ganjil)</option>
+                        <option value="blue">🔵 Ganti Latar Biru (Tahun Genap)</option>
+                        <option value="white">⚪ Ganti Latar Putih (Visa / Paspor)</option>
                       </select>
 
                       {/* Watermark */}
@@ -1034,6 +1123,52 @@ function HomeContent() {
                           </button>
                         </div>
                       </div>
+
+                      {/* 3. Ekstrak Audio dari Video */}
+                      <div className="space-y-3 col-span-1 md:col-span-2 pt-4 border-t border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                            <Volume2 className="h-3.5 w-3.5 text-blue-400" />
+                            <span>3. Ekstrak Suara / Musik dari Video</span>
+                          </span>
+                          <span className="text-[10px] text-slate-400">Format .WAV Berkualitas Tinggi</span>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          Ambil rekaman suara, podcast, atau audio latar dari video tanpa kompresi yang merusak kualitas.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={handleExtractAudio}
+                            disabled={isExtractingAudio}
+                            className="py-2 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 border border-slate-700 text-white text-xs font-semibold transition-colors flex items-center gap-2"
+                          >
+                            {isExtractingAudio ? (
+                              <>
+                                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                <span>Mengekstrak Suara...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="h-3.5 w-3.5 text-blue-400" />
+                                <span>Ekstrak Trek Audio</span>
+                              </>
+                            )}
+                          </button>
+
+                          {extractedAudioUrl && (
+                            <a
+                              href={extractedAudioUrl}
+                              download={extractedAudioName || 'audio.wav'}
+                              onClick={() => triggerSmartMonetization(false)}
+                              className="py-2 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              <span>Unduh Audio ({extractedAudioName})</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
                     {/* Captured Frame Preview */}
@@ -1351,6 +1486,65 @@ function HomeContent() {
                 <span>Buka Panduan &amp; Tanya Jawab (FAQ)</span>
                 <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Link>
+            </div>
+          </div>
+
+          {/* Viral Social Share Card */}
+          <div className="rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-slate-900 to-indigo-950/40 p-6 flex flex-col sm:flex-row items-center justify-between gap-5">
+            <div className="space-y-1 text-center sm:text-left">
+              <h3 className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                <Share2 className="h-4 w-4 text-blue-400" />
+                <span>Bantu Rekan Pejuang CPNS &amp; Teman Kerja Anda</span>
+              </h3>
+              <p className="text-xs text-slate-400 max-w-xl">
+                Bagikan OmniPic ke grup WhatsApp atau Telegram agar rekan yang butuh kompresi pas foto 200 KB tidak perlu bayar jasa percetakan.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                  'Halo! Jika butuh kompres foto 200 KB untuk berkas resmi CPNS/KTP atau ubah ukuran pas foto 3x4 & 4x6 gratis dan cepat, gunakan OmniPic di sini: https://omni-pic-convert.vercel.app/'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerSmartMonetization(false)}
+                className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
+              >
+                <span>Bagikan ke WhatsApp</span>
+              </a>
+
+              <a
+                href={`https://t.me/share/url?url=${encodeURIComponent(
+                  'https://omni-pic-convert.vercel.app/'
+                )}&text=${encodeURIComponent(
+                  'OmniPic - Studio kompres foto 200 KB resmi CPNS & olah video gratis di browser.'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerSmartMonetization(false)}
+                className="px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
+              >
+                <span>Telegram</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={handleCopyShareLink}
+                className="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition-colors flex items-center gap-1.5"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-emerald-400">Tersalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Salin Link Web</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </section>
