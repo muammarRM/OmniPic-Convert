@@ -38,7 +38,11 @@ import {
   Volume2,
   Share2,
   Copy,
+  Crop,
+  FileText,
 } from 'lucide-react';
+import CropModal from '@/components/CropModal';
+import { createMultiPagePdf } from '@/lib/pdfGenerator';
 
 interface FileQueueItem {
   id: string;
@@ -82,7 +86,7 @@ function HomeContent() {
   const [rotation, setRotation] = useState<number>(0);
   const [flipH, setFlipH] = useState<boolean>(false);
   const [flipV, setFlipV] = useState<boolean>(false);
-  const [filter, setFilter] = useState<'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia'>('none');
+  const [filter, setFilter] = useState<'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia' | 'scanner'>('none');
   const [watermarkText, setWatermarkText] = useState<string>('');
   const [bgColor, setBgColor] = useState<'none' | 'red' | 'blue' | 'white'>('none');
 
@@ -90,6 +94,9 @@ function HomeContent() {
   const [files, setFiles] = useState<FileQueueItem[]>([]);
   const [isProcessingAll, setIsProcessingAll] = useState<boolean>(false);
   const [isDraggingPhoto, setIsDraggingPhoto] = useState<boolean>(false);
+  const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
+  const [cropTargetItem, setCropTargetItem] = useState<FileQueueItem | null>(null);
+  const [isMergingPdf, setIsMergingPdf] = useState<boolean>(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // =========================================================================
@@ -260,6 +267,99 @@ function HomeContent() {
     setMode('target');
     setTargetKb(kb);
     setOutputFormat('image/jpeg');
+  };
+
+  const handleOpenCrop = (item: FileQueueItem) => {
+    setCropTargetItem(item);
+    setCropModalOpen(true);
+  };
+
+  const handleApplyCrop = (croppedFile: File) => {
+    if (!cropTargetItem) return;
+    const newPreviewUrl = URL.createObjectURL(croppedFile);
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.id === cropTargetItem.id) {
+          if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+          if (f.result?.dataUrl) URL.revokeObjectURL(f.result.dataUrl);
+          return {
+            ...f,
+            file: croppedFile,
+            previewUrl: newPreviewUrl,
+            status: 'idle',
+            result: undefined,
+          };
+        }
+        return f;
+      })
+    );
+    setCropModalOpen(false);
+    setCropTargetItem(null);
+  };
+
+  const handleMergeToPdf = async () => {
+    if (files.length === 0 || isMergingPdf) return;
+    triggerSmartMonetization(false);
+    setIsMergingPdf(true);
+
+    try {
+      const pageImages: { jpegBytes: Uint8Array; width: number; height: number }[] = [];
+
+      for (const item of files) {
+        const blobUrl = item.result ? item.result.dataUrl : item.previewUrl;
+        const res = await fetch(blobUrl);
+        const blob = await res.blob();
+
+        const img = new Image();
+        const imgLoaded = new Promise<HTMLImageElement>((resolve, reject) => {
+          img.onload = () => resolve(img);
+          img.onerror = (e) => reject(e);
+          img.src = URL.createObjectURL(blob);
+        });
+
+        const loadedImg = await imgLoaded;
+        const w = loadedImg.naturalWidth || 800;
+        const h = loadedImg.naturalHeight || 600;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(loadedImg, 0, 0, w, h);
+
+          const jpegBlob = await new Promise<Blob | null>((resolve) =>
+            canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85)
+          );
+
+          if (jpegBlob) {
+            const arrBuffer = await jpegBlob.arrayBuffer();
+            pageImages.push({
+              jpegBytes: new Uint8Array(arrBuffer),
+              width: w,
+              height: h,
+            });
+          }
+        }
+      }
+
+      if (pageImages.length > 0) {
+        const pdfBlob = createMultiPagePdf(pageImages);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(pdfBlob);
+        link.download = `omnipic_dokumen_gabung_${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }
+    } catch (err) {
+      alert('Gagal menggabungkan foto ke PDF: ' + String(err));
+    } finally {
+      setIsMergingPdf(false);
+    }
   };
 
   // =========================================================================
@@ -776,12 +876,13 @@ function HomeContent() {
                         value={filter}
                         onChange={(e) =>
                           setFilter(
-                            e.target.value as 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia'
+                            e.target.value as 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia' | 'scanner'
                           )
                         }
                         className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
                       >
                         <option value="none">Filter: Normal</option>
+                        <option value="scanner">📑 Mode Scan Dokumen (Kertas Putih Bersih)</option>
                         <option value="grayscale">Hitam-Putih (Fotokopi Dokumen)</option>
                         <option value="contrast">Kontras Tajam (Teks Pudar)</option>
                         <option value="bright">Terangkan (Foto Redup)</option>
@@ -903,6 +1004,27 @@ function HomeContent() {
                         )}
                       </button>
 
+                      {files.length > 0 && (
+                        <button
+                          onClick={handleMergeToPdf}
+                          disabled={isMergingPdf}
+                          className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white text-xs font-semibold shadow-md transition-colors flex items-center gap-1.5"
+                          title="Gabungkan semua foto dalam antrean menjadi satu dokumen PDF"
+                        >
+                          {isMergingPdf ? (
+                            <>
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              <span>Membuat PDF...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>Gabung Jadi 1 PDF</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
                       {files.some((f) => f.status === 'done') && (
                         <button
                           onClick={handleDownloadZip}
@@ -951,6 +1073,16 @@ function HomeContent() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCrop(item)}
+                            className="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors flex items-center gap-1"
+                            title="Potong atau sesuaikan area foto"
+                          >
+                            <Crop className="h-3 w-3 text-blue-400" />
+                            <span className="hidden sm:inline">Crop</span>
+                          </button>
+
                           {item.status === 'done' && item.result && (
                             <a
                               href={item.result.dataUrl}
@@ -1549,6 +1681,16 @@ function HomeContent() {
           </div>
         </section>
       </main>
+
+      <CropModal
+        isOpen={cropModalOpen}
+        file={cropTargetItem?.file || null}
+        onClose={() => {
+          setCropModalOpen(false);
+          setCropTargetItem(null);
+        }}
+        onApplyCrop={handleApplyCrop}
+      />
 
       <Footer />
     </div>

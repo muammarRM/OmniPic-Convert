@@ -11,7 +11,7 @@ export interface ConvertOptions {
   rotation?: number; // 0, 90, 180, 270
   flipHorizontal?: boolean;
   flipVertical?: boolean;
-  filter?: 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia';
+  filter?: 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia' | 'scanner';
   watermarkText?: string;
   bgColor?: 'none' | 'red' | 'blue' | 'white';
 }
@@ -166,6 +166,8 @@ function renderToCanvas(
     ctx.filter = 'brightness(125%)';
   } else if (filter === 'sepia') {
     ctx.filter = 'sepia(100%)';
+  } else if (filter === 'scanner') {
+    ctx.filter = 'contrast(180%) brightness(115%) grayscale(80%)';
   }
 
   // Move origin to center for rotation/flip
