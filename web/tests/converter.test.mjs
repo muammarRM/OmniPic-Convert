@@ -40,3 +40,25 @@ test('calculateDimensions maintains aspect ratio for custom size', () => {
   });
   assert.deepStrictEqual(result, { width: 500, height: 250 });
 });
+
+test('calculateDimensions calculates Pas Foto 4x6 and KTP correctly', () => {
+  const r4x6 = calculateDimensions(1920, 1080, {
+    outputFormat: 'image/jpeg',
+    quality: 0.85,
+    resizePreset: '4x6',
+  });
+  assert.deepStrictEqual(r4x6, {
+    width: PRESET_DIMENSIONS['4x6'].width,
+    height: PRESET_DIMENSIONS['4x6'].height,
+  });
+
+  const rKtp = calculateDimensions(1920, 1080, {
+    outputFormat: 'image/jpeg',
+    quality: 0.85,
+    resizePreset: 'ktp',
+  });
+  assert.deepStrictEqual(rKtp, {
+    width: PRESET_DIMENSIONS['ktp'].width,
+    height: PRESET_DIMENSIONS['ktp'].height,
+  });
+});

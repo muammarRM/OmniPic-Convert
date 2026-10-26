@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Image as ImageIcon, Heart } from 'lucide-react';
+import { Image as ImageIcon, Heart, Shield, BookOpen } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -16,45 +16,55 @@ export default function Footer() {
               <span className="font-bold text-white text-sm">OmniPic</span>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              Alat kompresi dan konversi foto online gratis. Semua proses pengolahan gambar berlangsung langsung di peramban Anda tanpa pernah dikirim ke server.
+              Studio serbabisa untuk kompres foto, olah video, buat animasi GIF, dan unduh media online. Diproses 100% di browser demi keamanan data pribadi Anda.
             </p>
+            <div className="flex items-center gap-2 text-[11px] text-emerald-400 font-medium">
+              <Shield className="h-3.5 w-3.5" />
+              <span>Privasi Terjamin: File tidak disimpan di server</span>
+            </div>
           </div>
 
-          {/* Quick Links */}
+          {/* Quick Tools */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-semibold text-slate-200">
-              Navigasi
+            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono">
+              Fitur Studio
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/#kompresor" className="hover:text-white transition-colors">
-                  Kompres Target KB
+                <Link href="/?tool=photo" className="hover:text-white transition-colors">
+                  Studio Kompres Foto (200 KB)
                 </Link>
               </li>
               <li>
-                <Link href="/#kompresor" className="hover:text-white transition-colors">
-                  Konversi HEIC iPhone
+                <Link href="/?tool=photo" className="hover:text-white transition-colors">
+                  Preset Pas Foto (3x4 &amp; 4x6)
                 </Link>
               </li>
               <li>
-                <Link href="/#kompresor" className="hover:text-white transition-colors">
-                  Resize Pas Foto
+                <Link href="/?tool=video" className="hover:text-white transition-colors">
+                  Studio Video &amp; Animasi GIF
                 </Link>
               </li>
               <li>
-                <Link href="/#instagram" className="hover:text-white transition-colors">
-                  Unduh Foto Instagram
+                <Link href="/?tool=downloader" className="hover:text-white transition-colors">
+                  Unduh Media Multi-Platform
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Legal / Policy for Google AdSense */}
+          {/* Guides & Legal */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-semibold text-slate-200">
-              Kebijakan
+            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono">
+              Bantuan &amp; Legal
             </h4>
             <ul className="space-y-2 text-xs">
+              <li>
+                <Link href="/panduan" className="text-blue-400 hover:text-blue-300 font-medium transition-colors flex items-center gap-1">
+                  <BookOpen className="h-3 w-3" />
+                  <span>Panduan &amp; Tanya Jawab</span>
+                </Link>
+              </li>
               <li>
                 <Link href="/privacy" className="hover:text-white transition-colors">
                   Kebijakan Privasi
@@ -67,12 +77,12 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/about" className="hover:text-white transition-colors">
-                  Tentang Kami
+                  Tentang OmniPic
                 </Link>
               </li>
               <li>
                 <Link href="/contact" className="hover:text-white transition-colors">
-                  Kontak
+                  Kontak Bantuan
                 </Link>
               </li>
             </ul>
@@ -80,12 +90,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-          <p>© {new Date().getFullYear()} OmniPic. Bebas digunakan tanpa registrasi.</p>
+        <div className="pt-6 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <p>© {new Date().getFullYear()} OmniPic. Layanan gratis tanpa login.</p>
           <div className="flex items-center gap-1">
             <span>Dibuat dengan</span>
             <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500 inline" />
-            <span>untuk kemudahan dokumen Anda.</span>
+            <span>untuk kemudahan dokumen &amp; karya Anda.</span>
           </div>
         </div>
       </div>

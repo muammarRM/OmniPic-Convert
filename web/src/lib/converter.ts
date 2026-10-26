@@ -8,6 +8,11 @@ export interface ConvertOptions {
   customWidth?: number;
   customHeight?: number;
   maintainAspectRatio?: boolean;
+  rotation?: number; // 0, 90, 180, 270
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  filter?: 'none' | 'grayscale' | 'contrast' | 'bright' | 'sepia';
+  watermarkText?: string;
 }
 
 export interface ConvertResult {
@@ -125,23 +130,73 @@ export function calculateDimensions(
 }
 
 /**
- * Render image onto a canvas with target dimensions
+ * Render image onto a canvas with target dimensions, rotation, filters, and watermark
  */
-function renderToCanvas(img: HTMLImageElement, width: number, height: number): HTMLCanvasElement {
+function renderToCanvas(
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  options?: ConvertOptions
+): HTMLCanvasElement {
+  const rotation = options?.rotation || 0;
+  const isRotated90or270 = rotation === 90 || rotation === 270;
+  const canvasW = isRotated90or270 ? height : width;
+  const canvasH = isRotated90or270 ? width : height;
+
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = canvasW;
+  canvas.height = canvasH;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Canvas 2D context unavailable');
 
   // Fill with white background for transparency in JPEG or clean borders
   ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  ctx.save();
+
+  // Apply filters
+  const filter = options?.filter || 'none';
+  if (filter === 'grayscale') {
+    ctx.filter = 'grayscale(100%)';
+  } else if (filter === 'contrast') {
+    ctx.filter = 'contrast(150%) brightness(105%)';
+  } else if (filter === 'bright') {
+    ctx.filter = 'brightness(125%)';
+  } else if (filter === 'sepia') {
+    ctx.filter = 'sepia(100%)';
+  }
+
+  // Move origin to center for rotation/flip
+  ctx.translate(canvasW / 2, canvasH / 2);
+
+  if (rotation !== 0) {
+    ctx.rotate((rotation * Math.PI) / 180);
+  }
+
+  const flipH = options?.flipHorizontal ?? false;
+  const flipV = options?.flipVertical ?? false;
+  ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
 
   // Smooth resampling
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(img, 0, 0, width, height);
+  ctx.drawImage(img, -width / 2, -height / 2, width, height);
+  ctx.restore();
+
+  // Watermark text if provided
+  if (options?.watermarkText && options.watermarkText.trim()) {
+    ctx.save();
+    const fontSize = Math.max(14, Math.round(canvasW / 28));
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    const padding = Math.max(12, Math.round(canvasW / 40));
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(options.watermarkText.trim(), canvasW - padding, canvasH - padding);
+    ctx.restore();
+  }
+
   return canvas;
 }
 
@@ -188,7 +243,7 @@ export async function processImage(file: File, options: ConvertOptions): Promise
   // Step 3: Handle Target KB Mode vs Standard Quality Mode
   if (options.targetSizeKb && options.targetSizeKb > 0 && targetMime !== 'image/png') {
     const targetBytes = options.targetSizeKb * 1024;
-    let canvas = renderToCanvas(img, width, height);
+    let canvas = renderToCanvas(img, width, height, options);
 
     // Binary search for quality [0.05 .. 0.95]
     let lowQ = 0.05;
@@ -214,7 +269,7 @@ export async function processImage(file: File, options: ConvertOptions): Promise
       while (currentScale > 0.1) {
         const scaledW = Math.max(50, Math.round(width * currentScale));
         const scaledH = Math.max(50, Math.round(height * currentScale));
-        canvas = renderToCanvas(img, scaledW, scaledH);
+        canvas = renderToCanvas(img, scaledW, scaledH, options);
         const testBlob = await canvasToBlob(canvas, targetMime, 0.15);
         if (testBlob.size <= targetBytes) {
           bestBlob = testBlob;
@@ -229,8 +284,16 @@ export async function processImage(file: File, options: ConvertOptions): Promise
     finalBlob = bestBlob || (await canvasToBlob(canvas, targetMime, 0.05));
   } else {
     // Standard quality conversion
-    const canvas = renderToCanvas(img, width, height);
+    const canvas = renderToCanvas(img, width, height, options);
     finalBlob = await canvasToBlob(canvas, targetMime, options.quality);
+  }
+
+  // Adjust final dimensions if rotated 90 or 270 degrees
+  const rot = options.rotation || 0;
+  if (rot === 90 || rot === 270) {
+    const temp = finalWidth;
+    finalWidth = finalHeight;
+    finalHeight = temp;
   }
 
   // Generate output filename
