@@ -50,15 +50,6 @@ export default function AdBanner({
     );
   }
 
-  // Clean, non-intrusive preview container (no developer jargon or dashed alert borders)
-  return (
-    <div
-      className={`my-6 mx-auto w-full max-w-4xl rounded-lg bg-slate-900/40 border border-slate-800/60 py-6 px-4 text-center transition-opacity ${className}`}
-    >
-      <span className="text-[10px] tracking-widest uppercase text-slate-400 font-medium">{label}</span>
-      <div className="h-16 sm:h-20 flex items-center justify-center text-xs text-slate-400">
-        Ruang Sponsor &amp; Iklan
-      </div>
-    </div>
-  );
+  // If no direct display unit configured, render nothing so no empty placeholder confuses users
+  return null;
 }

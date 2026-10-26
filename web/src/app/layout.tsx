@@ -52,11 +52,24 @@ export default function RootLayout({
     <html lang="id" className="dark">
       <head>
         <meta name="monetag" content="6299037324741d2d89d09b8da71c3d53" />
+        {/* Monetag MultiTag */}
         <script
           src="https://quge5.com/88/tag.min.js"
           data-zone="302183"
           async
           data-cfasync="false"
+        />
+        {/* Monetag In-Page Push Banner */}
+        <script
+          src="https://nap5k.com/tag.min.js"
+          data-zone="12125317"
+          async
+          data-cfasync="false"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(s){s.dataset.zone='12125317',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));`,
+          }}
         />
         {adsenseId && (
           <Script
