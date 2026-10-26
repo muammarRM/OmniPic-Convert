@@ -156,9 +156,20 @@ export default function Home() {
     }
   };
 
+  const triggerMonetization = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.open('https://uplcm.com/4/12126165', '_blank');
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
   // Convert all items in queue
   const handleProcessAll = async () => {
     if (files.length === 0 || isProcessingAll) return;
+    triggerMonetization();
     setIsProcessingAll(true);
 
     const updated = [...files];
@@ -177,6 +188,7 @@ export default function Home() {
   const handleDownloadZip = async () => {
     const doneItems = files.filter((f) => f.status === 'done' && f.result);
     if (doneItems.length === 0) return;
+    triggerMonetization();
 
     const zip = new JSZip();
     doneItems.forEach((item, index) => {
@@ -488,6 +500,9 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Visual Sponsor Banner */}
+            <AdBanner label="Sponsor Rekomendasi" />
+
             {/* File Queue Section */}
             {files.length > 0 && (
               <div className="space-y-3">
@@ -593,6 +608,9 @@ export default function Home() {
                           <a
                             href={item.result.dataUrl}
                             download={item.result.filename}
+                            onClick={() => {
+                              setTimeout(triggerMonetization, 300);
+                            }}
                             className="flex items-center gap-1 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors"
                           >
                             <Download className="h-3 w-3" />
