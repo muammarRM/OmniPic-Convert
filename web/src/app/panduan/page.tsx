@@ -1,6 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { Metadata } from 'next';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import { HelpCircle, ShieldCheck, FileCheck, ArrowLeft, Camera, Sliders, Smartphone, Film } from 'lucide-react';
 import AdBanner from '@/components/AdBanner';
 
@@ -66,94 +68,98 @@ export default function PanduanPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12 space-y-10">
-      {/* Header */}
-      <div className="space-y-3">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span>Kembali ke Studio Utama</span>
-        </Link>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-          Panduan Penggunaan &amp; Pertanyaan Umum (FAQ)
-        </h1>
-        <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">
-          Informasi praktis seputar kompresi dokumen resmi, standar ukuran pas foto, keamanan privasi, dan tips memaksimalkan fitur OmniPic.
-        </p>
-      </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      <Navbar />
+      <main className="flex-1 mx-auto max-w-4xl px-4 py-8 sm:py-12 space-y-10 w-full">
+        {/* Header */}
+        <div className="space-y-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Kembali ke Studio Utama</span>
+          </Link>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Panduan Penggunaan &amp; Pertanyaan Umum (FAQ)
+          </h1>
+          <p className="text-sm text-slate-400 leading-relaxed max-w-2xl">
+            Informasi praktis seputar kompresi dokumen resmi, standar ukuran pas foto, keamanan privasi, dan tips memaksimalkan fitur OmniPic.
+          </p>
+        </div>
 
-      {/* Ad Banner */}
-      <AdBanner label="Sponsor Rekomendasi" />
+        {/* Ad Banner */}
+        <AdBanner label="Sponsor Rekomendasi" />
 
-      {/* Quick Guide Grid */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <Sliders className="h-5 w-5 text-blue-500" />
-          <span>Topik Panduan Utama</span>
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {guides.map((item, idx) => (
-            <div
-              key={idx}
-              className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-2 hover:border-slate-700 transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
-                  <item.icon className="h-4 w-4" />
+        {/* Quick Guide Grid */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Sliders className="h-5 w-5 text-blue-500" />
+            <span>Topik Panduan Utama</span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {guides.map((item, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 space-y-2 hover:border-slate-700 transition-colors"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
+                    <item.icon className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">{item.title}</h3>
                 </div>
-                <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Detailed FAQ Accordion / List */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          <HelpCircle className="h-5 w-5 text-blue-500" />
-          <span>Pertanyaan yang Sering Diajukan</span>
-        </h2>
-        <div className="divide-y divide-slate-800/80 rounded-xl border border-slate-800 bg-slate-900/40 px-5">
-          {faqs.map((faq, index) => (
-            <div key={index} className="py-4 space-y-1.5">
-              <h3 className="text-sm font-semibold text-white flex items-start gap-2">
-                <span className="text-blue-400 font-mono text-xs mt-0.5">Q{index + 1}:</span>
-                <span>{faq.q}</span>
-              </h3>
-              <p className="text-xs text-slate-400 leading-relaxed pl-6">{faq.a}</p>
-            </div>
-          ))}
+        {/* Detailed FAQ Accordion / List */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-blue-500" />
+            <span>Pertanyaan yang Sering Diajukan</span>
+          </h2>
+          <div className="divide-y divide-slate-800/80 rounded-xl border border-slate-800 bg-slate-900/40 px-5">
+            {faqs.map((faq, index) => (
+              <div key={index} className="py-4 space-y-1.5">
+                <h3 className="text-sm font-semibold text-white flex items-start gap-2">
+                  <span className="text-blue-400 font-mono text-xs mt-0.5">Q{index + 1}:</span>
+                  <span>{faq.q}</span>
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed pl-6">{faq.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Privacy Box */}
-      <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-5 space-y-2">
-        <div className="flex items-center gap-2 text-blue-400 font-semibold text-sm">
-          <ShieldCheck className="h-5 w-5" />
-          <span>Komitmen Keamanan &amp; Privasi Mutlak</span>
+        {/* Privacy Box */}
+        <div className="rounded-xl border border-blue-500/20 bg-blue-950/20 p-5 space-y-2">
+          <div className="flex items-center gap-2 text-blue-400 font-semibold text-sm">
+            <ShieldCheck className="h-5 w-5" />
+            <span>Komitmen Keamanan &amp; Privasi Mutlak</span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            OmniPic dirancang dengan arsitektur privasi zero-trust. Kami tidak memiliki database file gambar Anda. Setiap proses pemotongan, kompresi, dan konversi berlangsung murni di memori RAM browser Anda sendiri.
+          </p>
         </div>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          OmniPic dirancang dengan arsitektur privasi zero-trust. Kami tidak memiliki database file gambar Anda. Setiap proses pemotongan, kompresi, dan konversi berlangsung murni di memori RAM browser Anda sendiri.
-        </p>
-      </div>
 
-      {/* Action CTA */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-xl border border-slate-800 bg-slate-900/80">
-        <div className="space-y-0.5 text-center sm:text-left">
-          <h4 className="text-sm font-bold text-white">Siap mengompres atau mengedit foto Anda?</h4>
-          <p className="text-xs text-slate-400">Gunakan studio konversi instan tanpa perlu mendaftar akun.</p>
+        {/* Action CTA */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-xl border border-slate-800 bg-slate-900/80">
+          <div className="space-y-0.5 text-center sm:text-left">
+            <h4 className="text-sm font-bold text-white">Siap mengompres atau mengedit foto Anda?</h4>
+            <p className="text-xs text-slate-400">Gunakan studio konversi instan tanpa perlu mendaftar akun.</p>
+          </div>
+          <Link
+            href="/"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
+          >
+            <span>Mulai di Studio OmniPic</span>
+          </Link>
         </div>
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
-        >
-          <span>Mulai di Studio OmniPic</span>
-        </Link>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 }

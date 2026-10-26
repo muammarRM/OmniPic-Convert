@@ -363,6 +363,19 @@ export async function processImage(file: File, options: ConvertOptions): Promise
     finalHeight = temp;
   }
 
+  // If output is PDF, encapsulate the JPEG bytes into a standard compliant PDF 1.4 document
+  if (options.outputFormat === 'application/pdf') {
+    const { createMultiPagePdf } = await import('./pdfGenerator');
+    const arrayBuffer = await finalBlob.arrayBuffer();
+    finalBlob = createMultiPagePdf([
+      {
+        jpegBytes: new Uint8Array(arrayBuffer),
+        width: finalWidth,
+        height: finalHeight,
+      },
+    ]);
+  }
+
   // Generate output filename
   const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
   let ext = 'jpg';

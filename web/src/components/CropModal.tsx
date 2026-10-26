@@ -16,6 +16,7 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
   const [aspectPreset, setAspectPreset] = useState<AspectRatioPreset>('3:4');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+  const [canvasDim, setCanvasDim] = useState<{ width: number; height: number }>({ width: 480, height: 360 });
 
   // Crop coordinates (0 to 1 normalized to image natural size)
   const [cropRect, setCropRect] = useState<{ x: number; y: number; w: number; h: number }>({
@@ -35,7 +36,18 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
     const img = new Image();
     img.onload = () => {
       setImageObj(img);
-      // Set initial centered crop
+      const imgW = img.naturalWidth || 800;
+      const imgH = img.naturalHeight || 600;
+      const aspect = imgW / imgH;
+
+      const maxDim = 460;
+      let w = maxDim;
+      let h = Math.round(maxDim / aspect);
+      if (h > maxDim) {
+        h = maxDim;
+        w = Math.round(maxDim * aspect);
+      }
+      setCanvasDim({ width: Math.max(200, w), height: Math.max(200, h) });
       setCropRect({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
     };
     img.src = url;
@@ -45,8 +57,9 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
   // Adjust crop rectangle based on aspect ratio
   useEffect(() => {
     if (!imageObj) return;
-    const imgW = imageObj.naturalWidth;
-    const imgH = imageObj.naturalHeight;
+    const imgW = imageObj.naturalWidth || 1;
+    const imgH = imageObj.naturalHeight || 1;
+    const imgAspect = imgW / imgH;
 
     let targetRatio: number | null = null;
     if (aspectPreset === '1:1') targetRatio = 1;
@@ -55,7 +68,6 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
     else if (aspectPreset === '16:9') targetRatio = 16 / 9;
 
     if (targetRatio) {
-      const imgAspect = imgW / imgH;
       let w = 0.8;
       let h = (w * imgAspect) / targetRatio;
       if (h > 0.9) {
@@ -65,8 +77,8 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
       setCropRect({
         x: Math.max(0, (1 - w) / 2),
         y: Math.max(0, (1 - h) / 2),
-        w: Math.min(1, w),
-        h: Math.min(1, h),
+        w: Math.min(1, Math.max(0.1, w)),
+        h: Math.min(1, Math.max(0.1, h)),
       });
     }
   }, [aspectPreset, imageObj]);
@@ -127,7 +139,7 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
     ctx.stroke();
   }, [imageObj, cropRect]);
 
-  // Handle canvas drag
+  // Handle canvas drag (Mouse & Touch)
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
@@ -149,6 +161,34 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
   };
 
   const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length > 0) {
+      const touch = e.touches[0];
+      setIsDragging(true);
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx = (touch.clientX - dragStart.x) / rect.width;
+    const dy = (touch.clientY - dragStart.y) / rect.height;
+
+    setCropRect((prev) => {
+      const newX = Math.max(0, Math.min(1 - prev.w, prev.x + dx));
+      const newY = Math.max(0, Math.min(1 - prev.h, prev.y + dy));
+      return { ...prev, x: newX, y: newY };
+    });
+
+    setDragStart({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = () => {
     setIsDragging(false);
   };
 
@@ -259,13 +299,16 @@ export default function CropModal({ isOpen, file, onClose, onApplyCrop }: CropMo
         <div className="relative flex items-center justify-center bg-black/60 rounded-xl overflow-hidden border border-slate-800 select-none p-2">
           <canvas
             ref={canvasRef}
-            width={480}
-            height={360}
+            width={canvasDim.width}
+            height={canvasDim.height}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className="cursor-move max-w-full max-h-[50vh] object-contain rounded"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="cursor-move max-w-full max-h-[50vh] object-contain rounded touch-none shadow-lg"
           />
         </div>
 
