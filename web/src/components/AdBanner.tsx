@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ExternalLink, Sparkles } from 'lucide-react';
+import { getMonetagDirectLink } from '@/lib/monetag';
 
 interface AdBannerProps {
   slotId?: string;
@@ -23,7 +24,11 @@ export default function AdBanner({
   label = 'Sponsor',
 }: AdBannerProps) {
   const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID;
-  const directLinkUrl = 'https://uplcm.com/4/12126165';
+  const [directLinkUrl, setDirectLinkUrl] = useState('https://uplcm.com/4/12131009');
+
+  useEffect(() => {
+    setDirectLinkUrl(getMonetagDirectLink());
+  }, []);
 
   useEffect(() => {
     if (adsenseClientId && typeof window !== 'undefined') {

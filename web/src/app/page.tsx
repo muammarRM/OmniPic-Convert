@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import CropModal from '@/components/CropModal';
 import { createMultiPagePdf } from '@/lib/pdfGenerator';
+import { getMonetagDirectLink } from '@/lib/monetag';
 
 interface FileQueueItem {
   id: string;
@@ -138,14 +139,15 @@ function HomeContent() {
     }[];
   } | null>(null);
 
-  // Smart First-Interaction Session Monetizer (1x per visit)
+  // Smart First-Interaction Session Monetizer (1x per visit) with Pool Rotation
   const triggerSmartMonetization = (force = false) => {
     if (typeof window === 'undefined') return;
     const hasTriggered = sessionStorage.getItem('omnipic_monetized_session');
     if (!hasTriggered || force) {
       sessionStorage.setItem('omnipic_monetized_session', 'true');
       try {
-        window.open('https://uplcm.com/4/12126165', '_blank');
+        const adUrl = getMonetagDirectLink();
+        window.open(adUrl, '_blank');
       } catch (e) {
         console.warn('Monetization trigger notice:', e);
       }
