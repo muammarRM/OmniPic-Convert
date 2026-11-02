@@ -6,6 +6,7 @@ import {
   PRESET_DIMENSIONS,
   isHumanSkinTone,
   applyBackgroundColor,
+  generateLivePreview,
 } from '../src/lib/converter.ts';
 
 test('formatBytes formats file sizes correctly', () => {
@@ -144,4 +145,15 @@ test('applyBackgroundColor replaces perimeter wall background with CPNS Blue whi
   assert.strictEqual(updatedData[skinIdx], 198, 'Skin pixel R should remain 198');
   assert.strictEqual(updatedData[skinIdx + 1], 134, 'Skin pixel G should remain 134');
   assert.strictEqual(updatedData[skinIdx + 2], 66, 'Skin pixel B should remain 66');
+});
+
+test('generateLivePreview returns gracefully in headless / node environment', async () => {
+  const dummyBlob = new Blob(['dummy'], { type: 'image/jpeg' });
+  const result = await generateLivePreview(dummyBlob, {
+    outputFormat: 'image/jpeg',
+    quality: 0.85,
+    bgColor: 'blue',
+  });
+  // In Node environment without window/document, it safely returns empty string
+  assert.strictEqual(result, '');
 });

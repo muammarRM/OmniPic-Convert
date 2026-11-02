@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import AdBanner from '@/components/AdBanner';
 import {
   processImage,
+  generateLivePreview,
   ConvertOptions,
   ConvertResult,
   formatBytes,
@@ -40,6 +41,8 @@ import {
   Copy,
   Crop,
   FileText,
+  Eye,
+  ZoomIn,
 } from 'lucide-react';
 import CropModal from '@/components/CropModal';
 import { createMultiPagePdf } from '@/lib/pdfGenerator';
@@ -99,6 +102,79 @@ function HomeContent() {
   const [isMergingPdf, setIsMergingPdf] = useState<boolean>(false);
   const [isZipping, setIsZipping] = useState<boolean>(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  // Live Studio Preview State
+  const [selectedPreviewIndex, setSelectedPreviewIndex] = useState<number>(0);
+  const [livePreviewUrl, setLivePreviewUrl] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState<boolean>(false);
+  const [previewCompareMode, setPreviewCompareMode] = useState<'result' | 'original'>('result');
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState<boolean>(false);
+
+  // Real-time Live Preview Engine with Debounce
+  useEffect(() => {
+    if (files.length === 0) {
+      setLivePreviewUrl(null);
+      return;
+    }
+
+    const targetIdx = Math.min(selectedPreviewIndex, files.length - 1);
+    const targetFileItem = files[targetIdx];
+    if (!targetFileItem) return;
+
+    let isCancelled = false;
+    setIsGeneratingPreview(true);
+
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const previewOptions: ConvertOptions = {
+          outputFormat,
+          quality,
+          targetSizeKb: mode === 'target' ? targetKb : undefined,
+          resizePreset: preset as ConvertOptions['resizePreset'],
+          customWidth: preset === 'custom' ? customW : undefined,
+          customHeight: preset === 'custom' ? customH : undefined,
+          maintainAspectRatio: maintainAspect,
+          rotation,
+          flipHorizontal: flipH,
+          flipVertical: flipV,
+          filter,
+          watermarkText: watermarkText.trim() || undefined,
+          bgColor,
+        };
+
+        const previewDataUrl = await generateLivePreview(targetFileItem.file, previewOptions, 560);
+        if (!isCancelled) {
+          setLivePreviewUrl(previewDataUrl);
+          setIsGeneratingPreview(false);
+        }
+      } catch (err) {
+        console.warn('Live preview generation failed:', err);
+        if (!isCancelled) setIsGeneratingPreview(false);
+      }
+    }, 100);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounceTimer);
+    };
+  }, [
+    files,
+    selectedPreviewIndex,
+    bgColor,
+    filter,
+    preset,
+    customW,
+    customH,
+    maintainAspect,
+    rotation,
+    flipH,
+    flipV,
+    watermarkText,
+    outputFormat,
+    mode,
+    targetKb,
+    quality,
+  ]);
 
   // =========================================================================
   // 2. VIDEO & GIF STUDIO STATE
@@ -963,6 +1039,164 @@ function HomeContent() {
                 </div>
               </div>
 
+              {/* 3. Live Interactive Studio Preview Panel */}
+              {files.length > 0 && (
+                <div id="live-preview-section" className="rounded-xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5 space-y-4 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-600/20 text-blue-400">
+                          <Eye className="h-3.5 w-3.5" />
+                        </span>
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>Pratinjau Langsung (Live Preview)</span>
+                          {isGeneratingPreview && (
+                            <RefreshCw className="h-3 w-3 animate-spin text-blue-400" />
+                          )}
+                        </h3>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Periksa hasil ganti latar merah/biru, pemotongan pas foto, dan efek secara instan sebelum diunduh.
+                      </p>
+                    </div>
+
+                    {/* Compare Mode Toggle */}
+                    <div className="flex items-center gap-1 self-start sm:self-auto bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewCompareMode('result')}
+                        className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                          previewCompareMode === 'result'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        ✨ Hasil Edit / Latar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewCompareMode('original')}
+                        className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                          previewCompareMode === 'original'
+                            ? 'bg-slate-800 text-white shadow-sm'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        📷 Foto Asli
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Multiple Photos Selector Tabs (if more than 1 file) */}
+                  {files.length > 1 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      <span className="text-[11px] font-semibold text-slate-400 shrink-0">Pratinjau Foto:</span>
+                      {files.map((fileItem, idx) => (
+                        <button
+                          key={fileItem.id}
+                          type="button"
+                          onClick={() => setSelectedPreviewIndex(idx)}
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+                            selectedPreviewIndex === idx
+                              ? 'bg-blue-600/25 text-blue-300 border border-blue-500/50'
+                              : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                          }`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${selectedPreviewIndex === idx ? 'bg-blue-400' : 'bg-slate-600'}`}></span>
+                          <span className="truncate max-w-[120px]">{fileItem.file.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Main Preview Frame Container */}
+                  <div className="relative rounded-xl border border-slate-800/90 bg-slate-950 p-4 sm:p-6 flex flex-col items-center justify-center min-h-[280px] sm:min-h-[340px] overflow-hidden">
+                    {/* Top-Left Floating Info Badges */}
+                    <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 z-10 pointer-events-none">
+                      {previewCompareMode === 'result' && bgColor !== 'none' && (
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold shadow-md ${
+                            bgColor === 'red'
+                              ? 'bg-rose-600 text-white border border-rose-400/40'
+                              : bgColor === 'blue'
+                              ? 'bg-blue-600 text-white border border-blue-400/40'
+                              : 'bg-white text-slate-900 border border-slate-300'
+                          }`}
+                        >
+                          <span>
+                            {bgColor === 'red'
+                              ? '🔴 Latar Merah (CPNS Ganjil)'
+                              : bgColor === 'blue'
+                              ? '🔵 Latar Biru (CPNS Genap)'
+                              : '⚪ Latar Putih Bersih'}
+                          </span>
+                        </span>
+                      )}
+
+                      {preset !== 'original' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-800/90 text-slate-300 text-[10px] font-mono border border-slate-700 shadow-sm">
+                          {preset === '3x4' ? '📐 3x4 cm' : preset === '4x6' ? '📐 4x6 cm' : preset === '2x3' ? '📐 2x3 cm' : preset.toUpperCase()}
+                        </span>
+                      )}
+
+                      {filter !== 'none' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-800/90 text-slate-300 text-[10px] font-mono border border-slate-700 shadow-sm">
+                          {filter === 'scanner' ? '📑 Scan' : filter.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Top-Right Zoom Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsZoomModalOpen(true)}
+                      className="absolute top-3 right-3 z-10 px-2.5 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-md"
+                      title="Perbesar Pratinjau Resolusi Tinggi"
+                    >
+                      <ZoomIn className="h-3.5 w-3.5 text-blue-400" />
+                      <span className="hidden sm:inline">Perbesar</span>
+                    </button>
+
+                    {/* Image Viewport */}
+                    <div className="relative max-w-full flex items-center justify-center my-2">
+                      {previewCompareMode === 'original' ? (
+                        <img
+                          src={files[selectedPreviewIndex]?.previewUrl || ''}
+                          alt="Foto Asli"
+                          className="max-h-[320px] max-w-full object-contain rounded-lg shadow-2xl border border-slate-800/80 transition-all"
+                        />
+                      ) : livePreviewUrl ? (
+                        <img
+                          src={livePreviewUrl}
+                          alt="Pratinjau Hasil"
+                          className="max-h-[320px] max-w-full object-contain rounded-lg shadow-2xl border border-slate-800/80 transition-all"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400 py-12 gap-2">
+                          <RefreshCw className="h-6 w-6 animate-spin text-blue-400" />
+                          <span className="text-xs">Membuat pratinjau instan...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Status Feedback */}
+                    <div className="mt-2 text-center">
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {previewCompareMode === 'original' ? (
+                          'Menampilkan foto asli (sebelum diolah).'
+                        ) : bgColor !== 'none' ? (
+                          <span>
+                            🛡️ <strong>Latar resmi CPNS aktif</strong> dengan proteksi otomatis agar wajah &amp; kulit tidak terwarnai.
+                          </span>
+                        ) : (
+                          'Pratinjau aktif sesuai pengaturan studio saat ini.'
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* File Queue Section */}
               {files.length > 0 && (
                 <div className="space-y-4 pt-4 border-t border-slate-800">
@@ -1090,6 +1324,24 @@ function HomeContent() {
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const foundIdx = files.findIndex((f) => f.id === item.id);
+                              if (foundIdx !== -1) setSelectedPreviewIndex(foundIdx);
+                              document.getElementById('live-preview-section')?.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className={`px-2.5 py-1 rounded border text-xs font-medium transition-colors flex items-center gap-1 ${
+                              selectedPreviewIndex === files.findIndex((f) => f.id === item.id)
+                                ? 'border-blue-500/50 bg-blue-600/25 text-blue-300'
+                                : 'border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200'
+                            }`}
+                            title="Tampilkan foto ini di pratinjau studio"
+                          >
+                            <Eye className="h-3 w-3 text-blue-400" />
+                            <span className="hidden sm:inline">Pratinjau</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleOpenCrop(item)}
@@ -1683,6 +1935,53 @@ function HomeContent() {
         }}
         onApplyCrop={handleApplyCrop}
       />
+
+      {/* High-Resolution Inspection Zoom Modal */}
+      {isZoomModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150">
+          <div className="relative max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
+                  <ZoomIn className="h-4 w-4" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Inspeksi Pratinjau Resolusi Tinggi</h4>
+                  <p className="text-[11px] text-slate-400 truncate max-w-xs sm:max-w-md">
+                    {files[selectedPreviewIndex]?.file.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-xs font-semibold transition-colors"
+              >
+                ✕ Tutup
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-950 rounded-xl p-3 border border-slate-800 min-h-[260px]">
+              <img
+                src={previewCompareMode === 'original' ? files[selectedPreviewIndex]?.previewUrl : (livePreviewUrl || files[selectedPreviewIndex]?.previewUrl)}
+                alt="High-Res Zoom Inspection"
+                className="max-h-[60vh] max-w-full object-contain rounded-lg shadow-lg"
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-400">
+              <span>Periksa kerapian tepian rambut, bahu, dan kebersihan latar foto sebelum mengunduh.</span>
+              <button
+                type="button"
+                onClick={() => setIsZoomModalOpen(false)}
+                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-colors text-center"
+              >
+                Selesai Memeriksa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
