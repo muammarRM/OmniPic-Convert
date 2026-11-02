@@ -43,7 +43,6 @@ import {
 } from 'lucide-react';
 import CropModal from '@/components/CropModal';
 import { createMultiPagePdf } from '@/lib/pdfGenerator';
-import { getMonetagDirectLink } from '@/lib/monetag';
 
 interface FileQueueItem {
   id: string;
@@ -140,34 +139,6 @@ function HomeContent() {
     }[];
   } | null>(null);
 
-  // Smart First-Interaction Session Monetizer (1x per visit) with Pool Rotation
-  const triggerSmartMonetization = (force = false) => {
-    if (typeof window === 'undefined') return;
-    const hasTriggered = sessionStorage.getItem('omnipic_monetized_session');
-    if (!hasTriggered || force) {
-      sessionStorage.setItem('omnipic_monetized_session', 'true');
-      try {
-        const adUrl = getMonetagDirectLink();
-        window.open(adUrl, '_blank');
-      } catch (e) {
-        console.warn('Monetization trigger notice:', e);
-      }
-    }
-  };
-
-  const triggerMonetization = (force = false) => triggerSmartMonetization(force);
-
-  useEffect(() => {
-    const handleFirstGesture = () => {
-      triggerSmartMonetization(false);
-    };
-
-    window.addEventListener('click', handleFirstGesture, { once: true });
-    return () => {
-      window.removeEventListener('click', handleFirstGesture);
-    };
-  }, []);
-
   // =========================================================================
   // PHOTO HANDLERS
   // =========================================================================
@@ -226,7 +197,6 @@ function HomeContent() {
 
   const handleProcessAllPhotos = async () => {
     if (files.length === 0 || isProcessingAll) return;
-    triggerSmartMonetization(false);
     setIsProcessingAll(true);
 
     const updated = [...files];
@@ -246,7 +216,6 @@ function HomeContent() {
     const doneItems = files.filter((f) => f.status === 'done' && f.result);
     if (doneItems.length === 0 || isZipping) return;
     setIsZipping(true);
-    triggerSmartMonetization(false);
 
     try {
       const zip = new JSZip();
@@ -309,7 +278,6 @@ function HomeContent() {
 
   const handleMergeToPdf = async () => {
     if (files.length === 0 || isMergingPdf) return;
-    triggerSmartMonetization(false);
     setIsMergingPdf(true);
 
     try {
@@ -391,7 +359,6 @@ function HomeContent() {
 
   const handleCaptureFrame = () => {
     if (!videoPlayerRef.current) return;
-    triggerSmartMonetization(false);
     const video = videoPlayerRef.current;
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 1280;
@@ -422,7 +389,6 @@ function HomeContent() {
 
   const handleGenerateGif = async () => {
     if (!videoPlayerRef.current || !videoUrl) return;
-    triggerSmartMonetization(false);
     setIsGeneratingGif(true);
     setGifProgress(10);
 
@@ -462,7 +428,6 @@ function HomeContent() {
 
   const handleExtractAudio = async () => {
     if (!videoFile) return;
-    triggerSmartMonetization(false);
     setIsExtractingAudio(true);
     try {
       const { extractAudioFromVideo } = await import('@/lib/audioExtractor');
@@ -492,7 +457,6 @@ function HomeContent() {
     e.preventDefault();
     if (!mediaInputUrl.trim()) return;
 
-    triggerSmartMonetization(false);
     setIsMediaLoading(true);
     setMediaError(null);
     setMediaResult(null);
@@ -520,7 +484,6 @@ function HomeContent() {
 
   const handleSendMediaToPhotoStudio = async (mediaUrlToLoad: string) => {
     try {
-      triggerSmartMonetization(false);
       const proxyUrl = `/api/proxy?url=${encodeURIComponent(mediaUrlToLoad)}`;
       const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error('Gagal mengunduh media dari tautan');
@@ -738,7 +701,7 @@ function HomeContent() {
 
                   <button
                     onClick={() => {
-                      setBgColor('red');
+                      setBgColor(bgColor === 'red' ? 'none' : 'red');
                       setOutputFormat('image/jpeg');
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -750,7 +713,7 @@ function HomeContent() {
 
                   <button
                     onClick={() => {
-                      setBgColor('blue');
+                      setBgColor(bgColor === 'blue' ? 'none' : 'blue');
                       setOutputFormat('image/jpeg');
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -972,11 +935,20 @@ function HomeContent() {
                         }
                         className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
                       >
-                        <option value="none">Latar Belakang: Asli</option>
-                        <option value="red">🔴 Ganti Latar Merah (Tahun Ganjil)</option>
-                        <option value="blue">🔵 Ganti Latar Biru (Tahun Genap)</option>
+                        <option value="none">Latar Belakang: Asli (Tanpa Ubah)</option>
+                        <option value="red">🔴 Ganti Latar Merah (CPNS Tahun Ganjil)</option>
+                        <option value="blue">🔵 Ganti Latar Biru (CPNS Tahun Genap)</option>
                         <option value="white">⚪ Ganti Latar Putih (Visa / Paspor)</option>
                       </select>
+
+                      {bgColor !== 'none' && (
+                        <div className="rounded-lg bg-blue-950/40 border border-blue-800/40 p-2.5 text-[11px] text-blue-200/90 leading-relaxed flex items-start gap-2">
+                          <span className="shrink-0 text-sm">🛡️</span>
+                          <span>
+                            <strong>Pelindung Wajah &amp; Kulit Aktif:</strong> Sistem cerdas melindungi area kulit dan wajah agar tidak ikut terwarnai. Optimal untuk foto dengan dinding polos atau foto transparan.
+                          </span>
+                        </div>
+                      )}
 
                       {/* Watermark */}
                       <input
@@ -1132,7 +1104,6 @@ function HomeContent() {
                             <a
                               href={item.result.dataUrl}
                               download={item.result.filename}
-                              onClick={() => setTimeout(triggerMonetization, 300)}
                               className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
                             >
                               <Download className="h-3 w-3" />
@@ -1337,7 +1308,6 @@ function HomeContent() {
                             <a
                               href={extractedAudioUrl}
                               download={extractedAudioName || 'audio.wav'}
-                              onClick={() => triggerSmartMonetization(false)}
                               className="py-2 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -1394,7 +1364,6 @@ function HomeContent() {
                         <a
                           href={gifResultUrl}
                           download={`omnipic_animasi_${Date.now()}.gif`}
-                          onClick={() => setTimeout(triggerMonetization, 300)}
                           className="block w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-center text-xs font-semibold text-white transition-colors shadow-md"
                         >
                           Unduh Animasi (.GIF)
@@ -1529,7 +1498,6 @@ function HomeContent() {
                               <a
                                 href={`/api/proxy?url=${encodeURIComponent(item.url)}`}
                                 download={`omnipic_media_${idx + 1}.jpg`}
-                                onClick={() => setTimeout(triggerMonetization, 300)}
                                 className="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-center text-xs font-semibold text-white transition-colors"
                               >
                                 Unduh File
@@ -1666,7 +1634,6 @@ function HomeContent() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => triggerSmartMonetization(false)}
                 className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
               >
                 <span>Bagikan ke WhatsApp</span>
@@ -1680,7 +1647,6 @@ function HomeContent() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => triggerSmartMonetization(false)}
                 className="px-3.5 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-md"
               >
                 <span>Telegram</span>

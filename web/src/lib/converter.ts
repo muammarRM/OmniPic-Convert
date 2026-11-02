@@ -131,6 +131,198 @@ export function calculateDimensions(
 }
 
 /**
+ * Detects whether an RGB color belongs to human skin tone ranges.
+ * Evaluated using YCbCr chrominance cluster (ITU-R BT.601) and standard RGB constraints.
+ * Provides invariant skin detection across Fitzpatrick scales I-VI (fair to deep melanin).
+ */
+export function isHumanSkinTone(r: number, g: number, b: number): boolean {
+  // Convert RGB to YCbCr (ITU-R BT.601)
+  const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+  const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+
+  // Universal human skin chrominance cluster:
+  // In YCbCr space, human skin concentrates tightly in Cb [77, 127] and Cr [133, 173]
+  const isYCbCrSkin = cb >= 77 && cb <= 127 && cr >= 133 && cr <= 173;
+
+  // Physiological ratio:
+  // Human skin contains melanin and carotenoids, meaning green is always substantial (G/R between 0.40 and 0.95).
+  // Pure red or saturated red clothing (G/R < 0.40) is not human skin.
+  const gToRRatio = r > 0 ? g / r : 0;
+  const isSkinRatio = gToRRatio >= 0.40 && gToRRatio <= 0.95;
+
+  // Standard RGB skin boundaries (Kovac model):
+  const isRgbSkin =
+    r > 50 &&
+    g > 25 &&
+    b > 15 &&
+    r > g &&
+    r > b &&
+    Math.abs(r - g) >= 8 &&
+    Math.max(r, g, b) - Math.min(r, g, b) >= 12;
+
+  return isYCbCrSkin && isSkinRatio && isRgbSkin;
+}
+
+/**
+ * Intelligently replaces background color with official CPNS/KTP Red, Blue, or White.
+ * - For images with transparent backgrounds (PNG): fills transparent pixels directly.
+ * - For opaque portraits: executes a perimeter-originating BFS flood fill that strictly
+ *   protects human skin tones from ever being recolored (preventing the blue/red face artifact).
+ */
+export function applyBackgroundColor(
+  ctx: CanvasRenderingContext2D,
+  canvasW: number,
+  canvasH: number,
+  bgColor: 'red' | 'blue' | 'white'
+): void {
+  const targetRgb =
+    bgColor === 'red'
+      ? [211, 47, 47] // #D32F2F (Merah Resmi CPNS/KTP Tahun Ganjil)
+      : bgColor === 'blue'
+      ? [21, 101, 192] // #1565C0 (Biru Resmi CPNS/KTP Tahun Genap)
+      : [255, 255, 255]; // Putih Bersih
+
+  try {
+    const imgData = ctx.getImageData(0, 0, canvasW, canvasH);
+    const data = imgData.data;
+    const totalPixels = canvasW * canvasH;
+
+    // Check if the image has transparency (e.g. cut out PNG)
+    let transparentCount = 0;
+    const sampleLimit = Math.min(1000, totalPixels);
+    for (let i = 0; i < sampleLimit; i++) {
+      if (data[i * 4 + 3] < 128) transparentCount++;
+    }
+
+    // Case 1: Transparent image -> fill transparent pixels cleanly
+    if (transparentCount > 50) {
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 128) {
+          data[i] = targetRgb[0];
+          data[i + 1] = targetRgb[1];
+          data[i + 2] = targetRgb[2];
+          data[i + 3] = 255;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      return;
+    }
+
+    // Case 2: Opaque photo -> Perimeter-originating BFS flood fill with skin protection
+    // Step 2a: Sample outer perimeter (top edge, upper left & right edges)
+    const perimeterSamples: { r: number; g: number; b: number }[] = [];
+    const step = Math.max(1, Math.floor(Math.min(canvasW, canvasH) / 60));
+
+    // Top edge
+    for (let x = 0; x < canvasW; x += step) {
+      const idx = x * 4;
+      const r = data[idx];
+      const g = data[idx + 1];
+      const b = data[idx + 2];
+      if (!isHumanSkinTone(r, g, b)) {
+        perimeterSamples.push({ r, g, b });
+      }
+    }
+
+    // Left & Right edges (upper 70% where wall/background is present in pas foto)
+    const upperLimitH = Math.floor(canvasH * 0.7);
+    for (let y = 0; y < upperLimitH; y += step) {
+      // Left
+      const leftIdx = y * canvasW * 4;
+      const lr = data[leftIdx];
+      const lg = data[leftIdx + 1];
+      const lb = data[leftIdx + 2];
+      if (!isHumanSkinTone(lr, lg, lb)) {
+        perimeterSamples.push({ r: lr, g: lg, b: lb });
+      }
+      // Right
+      const rightIdx = (y * canvasW + (canvasW - 1)) * 4;
+      const rr = data[rightIdx];
+      const rg = data[rightIdx + 1];
+      const rb = data[rightIdx + 2];
+      if (!isHumanSkinTone(rr, rg, rb)) {
+        perimeterSamples.push({ r: rr, g: rg, b: rb });
+      }
+    }
+
+    // If no valid non-skin samples on perimeter, abort to avoid corrupting image
+    if (perimeterSamples.length === 0) return;
+
+    // Calculate reference background RGB from perimeter
+    let bgR = 0, bgG = 0, bgB = 0;
+    for (const s of perimeterSamples) {
+      bgR += s.r;
+      bgG += s.g;
+      bgB += s.b;
+    }
+    bgR = Math.round(bgR / perimeterSamples.length);
+    bgG = Math.round(bgG / perimeterSamples.length);
+    bgB = Math.round(bgB / perimeterSamples.length);
+
+    // BFS Flood Fill from edges
+    const visited = new Uint8Array(totalPixels);
+    const queue = new Int32Array(totalPixels);
+    let head = 0;
+    let tail = 0;
+
+    // Conservative color tolerance to avoid bleeding into shirt/hair
+    const tolerance = 40;
+
+    const pushPixel = (x: number, y: number) => {
+      const idx = y * canvasW + x;
+      if (visited[idx]) return;
+      visited[idx] = 1;
+
+      const p4 = idx * 4;
+      const r = data[p4];
+      const g = data[p4 + 1];
+      const b = data[p4 + 2];
+
+      // CRITICAL: Strict skin-tone shield. Human face, neck, lips are NEVER recolored or traversed!
+      if (isHumanSkinTone(r, g, b)) return;
+
+      const diff = Math.sqrt(
+        Math.pow(r - bgR, 2) + Math.pow(g - bgG, 2) + Math.pow(b - bgB, 2)
+      );
+
+      if (diff <= tolerance) {
+        queue[tail++] = idx;
+        data[p4] = targetRgb[0];
+        data[p4 + 1] = targetRgb[1];
+        data[p4 + 2] = targetRgb[2];
+        data[p4 + 3] = 255;
+      }
+    };
+
+    // Seed top edge
+    for (let x = 0; x < canvasW; x++) {
+      pushPixel(x, 0);
+    }
+    // Seed upper side edges
+    for (let y = 1; y < upperLimitH; y++) {
+      pushPixel(0, y);
+      pushPixel(canvasW - 1, y);
+    }
+
+    // Execute BFS flood fill
+    while (head < tail) {
+      const curIdx = queue[head++];
+      const cx = curIdx % canvasW;
+      const cy = Math.floor(curIdx / canvasW);
+
+      if (cx > 0) pushPixel(cx - 1, cy);
+      if (cx < canvasW - 1) pushPixel(cx + 1, cy);
+      if (cy > 0) pushPixel(cx, cy - 1);
+      if (cy < canvasH - 1) pushPixel(cx, cy + 1);
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+  } catch (e) {
+    console.warn('Background color replacement failed:', e);
+  }
+}
+
+/**
  * Render image onto a canvas with target dimensions, rotation, filters, and watermark
  */
 function renderToCanvas(
@@ -150,9 +342,14 @@ function renderToCanvas(
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Canvas 2D context unavailable');
 
-  // Fill with white background for transparency in JPEG or clean borders
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, canvasW, canvasH);
+  // Fill with white background for JPEG or when background is set; keep transparent for PNG
+  const isTransparentFormat = options?.outputFormat === 'image/png' && (!options?.bgColor || options?.bgColor === 'none');
+  if (!isTransparentFormat) {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasW, canvasH);
+  } else {
+    ctx.clearRect(0, 0, canvasW, canvasH);
+  }
 
   ctx.save();
 
@@ -190,65 +387,7 @@ function renderToCanvas(
   // Background color replacement (Merah / Biru Pas Foto Resmi)
   const bgColor = options?.bgColor;
   if (bgColor && bgColor !== 'none') {
-    const targetRgb =
-      bgColor === 'red'
-        ? [211, 47, 47] // #D32F2F (Merah Resmi CPNS)
-        : bgColor === 'blue'
-        ? [21, 101, 192] // #1565C0 (Biru Resmi CPNS)
-        : [255, 255, 255]; // Putih
-
-    try {
-      const imgData = ctx.getImageData(0, 0, canvasW, canvasH);
-      const data = imgData.data;
-
-      // Sample 4 corners to detect outer wall/background
-      const corners = [
-        0,
-        Math.max(0, (canvasW - 1) * 4),
-        Math.max(0, (canvasH - 1) * canvasW * 4),
-        Math.max(0, ((canvasH - 1) * canvasW + (canvasW - 1)) * 4),
-      ];
-
-      let sampleR = 0;
-      let sampleG = 0;
-      let sampleB = 0;
-      for (const idx of corners) {
-        sampleR += data[idx] || 255;
-        sampleG += data[idx + 1] || 255;
-        sampleB += data[idx + 2] || 255;
-      }
-      sampleR = Math.round(sampleR / 4);
-      sampleG = Math.round(sampleG / 4);
-      sampleB = Math.round(sampleB / 4);
-
-      const tolerance = 48;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
-
-        if (a < 128) {
-          data[i] = targetRgb[0];
-          data[i + 1] = targetRgb[1];
-          data[i + 2] = targetRgb[2];
-          data[i + 3] = 255;
-        } else {
-          const diff = Math.sqrt(
-            Math.pow(r - sampleR, 2) + Math.pow(g - sampleG, 2) + Math.pow(b - sampleB, 2)
-          );
-          if (diff <= tolerance) {
-            data[i] = targetRgb[0];
-            data[i + 1] = targetRgb[1];
-            data[i + 2] = targetRgb[2];
-            data[i + 3] = 255;
-          }
-        }
-      }
-      ctx.putImageData(imgData, 0, 0);
-    } catch (e) {
-      console.warn('Background color replacement failed:', e);
-    }
+    applyBackgroundColor(ctx, canvasW, canvasH, bgColor);
   }
 
   // Watermark text if provided

@@ -52,30 +52,12 @@ export default function RootLayout({
     <html lang="id" className="dark">
       <head>
         <meta name="monetag" content="6299037324741d2d89d09b8da71c3d53" />
-        {/* Monetag MultiTag */}
-        <script
-          src="https://quge5.com/88/tag.min.js"
-          data-zone="302183"
-          async
-          data-cfasync="false"
-        />
-        {/* Monetag In-Page Push Banner */}
+        {/* Monetag In-Page Push Banner (Discreet Top-Right Notification) */}
         <script
           src="https://nap5k.com/tag.min.js"
           data-zone="12125317"
           async
           data-cfasync="false"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(s){s.dataset.zone='12125317',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));`,
-          }}
-        />
-        {/* Monetag Tag Zone 12125319 */}
-        <script
-          src="https://5gvci.com/act/files/tag.min.js?z=12125319"
-          data-cfasync="false"
-          async
         />
         {adsenseId && (
           <Script
@@ -88,12 +70,6 @@ export default function RootLayout({
         )}
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-100`}>
-        {/* Monetag In-Page Push Execution */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(s){s.dataset.zone='12125317',s.src='https://nap5k.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));`,
-          }}
-        />
         {children}
       </body>
     </html>
