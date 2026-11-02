@@ -90,6 +90,12 @@ export async function extractAudioFromVideo(videoFile: File): Promise<{ blob: Bl
       blob: wavBlob,
       filename: `${baseName}_audio.wav`,
     };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes('decode') || (err instanceof DOMException && err.name === 'EncodingError')) {
+      throw new Error('Video ini tampaknya tidak memiliki trek suara (video tanpa audio).');
+    }
+    throw new Error(msg);
   } finally {
     if (audioCtx.state !== 'closed') {
       audioCtx.close();

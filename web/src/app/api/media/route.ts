@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidPublicHttpUrl } from '@/lib/security';
 
 interface MediaItem {
   url: string;
@@ -22,8 +23,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { url } = body;
 
-    if (!url || typeof url !== 'string') {
-      return NextResponse.json({ success: false, error: 'Masukkan URL yang valid.' }, { status: 400 });
+    if (!url || typeof url !== 'string' || !isValidPublicHttpUrl(url)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Masukkan tautan web publik yang valid (contoh: https://instagram.com/..., https://youtube.com/...).',
+        },
+        { status: 400 }
+      );
     }
 
     const trimmedUrl = url.trim();
@@ -40,6 +47,7 @@ export async function POST(req: NextRequest) {
       try {
         const oembedRes = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`, {
           next: { revalidate: 3600 },
+          signal: AbortSignal.timeout(6000),
         });
         if (oembedRes.ok) {
           const oembedData = await oembedRes.json();
@@ -87,6 +95,7 @@ export async function POST(req: NextRequest) {
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           },
           next: { revalidate: 3600 },
+          signal: AbortSignal.timeout(6000),
         });
 
         if (ttRes.ok) {
@@ -135,6 +144,7 @@ export async function POST(req: NextRequest) {
             'Accept-Language': 'en-US,en;q=0.9',
           },
           next: { revalidate: 60 },
+          signal: AbortSignal.timeout(6000),
         });
 
         if (embedRes.ok) {
@@ -172,6 +182,7 @@ export async function POST(req: NextRequest) {
                 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
               Accept: 'text/html',
             },
+            signal: AbortSignal.timeout(6000),
           });
 
           if (directRes.ok) {
@@ -234,6 +245,7 @@ export async function POST(req: NextRequest) {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         },
+        signal: AbortSignal.timeout(6000),
       });
 
       if (pageRes.ok) {

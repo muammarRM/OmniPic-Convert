@@ -98,6 +98,7 @@ function HomeContent() {
   const [cropModalOpen, setCropModalOpen] = useState<boolean>(false);
   const [cropTargetItem, setCropTargetItem] = useState<FileQueueItem | null>(null);
   const [isMergingPdf, setIsMergingPdf] = useState<boolean>(false);
+  const [isZipping, setIsZipping] = useState<boolean>(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // =========================================================================
@@ -243,25 +244,32 @@ function HomeContent() {
 
   const handleDownloadZip = async () => {
     const doneItems = files.filter((f) => f.status === 'done' && f.result);
-    if (doneItems.length === 0) return;
+    if (doneItems.length === 0 || isZipping) return;
+    setIsZipping(true);
     triggerSmartMonetization(false);
 
-    const zip = new JSZip();
-    doneItems.forEach((item, index) => {
-      if (item.result) {
-        const name = item.result.filename || `foto_${index + 1}.jpg`;
-        zip.file(name, item.result.blob);
-      }
-    });
+    try {
+      const zip = new JSZip();
+      doneItems.forEach((item, index) => {
+        if (item.result) {
+          const name = item.result.filename || `foto_${index + 1}.jpg`;
+          zip.file(name, item.result.blob);
+        }
+      });
 
-    const content = await zip.generateAsync({ type: 'blob' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(content);
-    link.download = `omnipic_batch_${Date.now()}.zip`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = `omnipic_batch_${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      alert('Gagal membuat paket ZIP: ' + String(err));
+    } finally {
+      setIsZipping(false);
+    }
   };
 
   // Quick preset chips
@@ -804,8 +812,13 @@ function HomeContent() {
                             <span className="text-[10px] text-slate-400">Lebar (px)</span>
                             <input
                               type="number"
+                              min="10"
+                              max="10000"
                               value={customW}
-                              onChange={(e) => setCustomW(Number(e.target.value))}
+                              onChange={(e) => {
+                                const val = Math.max(10, Math.min(10000, Number(e.target.value) || 800));
+                                setCustomW(val);
+                              }}
                               className="w-full rounded bg-slate-950 border border-slate-800 px-2 py-1 text-xs text-white"
                             />
                           </div>
@@ -813,8 +826,13 @@ function HomeContent() {
                             <span className="text-[10px] text-slate-400">Tinggi (px)</span>
                             <input
                               type="number"
+                              min="10"
+                              max="10000"
                               value={customH}
-                              onChange={(e) => setCustomH(Number(e.target.value))}
+                              onChange={(e) => {
+                                const val = Math.max(10, Math.min(10000, Number(e.target.value) || 600));
+                                setCustomH(val);
+                              }}
                               className="w-full rounded bg-slate-950 border border-slate-800 px-2 py-1 text-xs text-white"
                             />
                           </div>
@@ -1030,10 +1048,20 @@ function HomeContent() {
                       {files.some((f) => f.status === 'done') && (
                         <button
                           onClick={handleDownloadZip}
-                          className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors flex items-center gap-1.5"
+                          disabled={isZipping}
+                          className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800/70 text-white text-xs font-semibold shadow-md transition-colors flex items-center gap-1.5"
                         >
-                          <Archive className="h-3.5 w-3.5" />
-                          <span>Unduh Semua (.ZIP)</span>
+                          {isZipping ? (
+                            <>
+                              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                              <span>Mengompres ZIP...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Archive className="h-3.5 w-3.5" />
+                              <span>Unduh Semua (.ZIP)</span>
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -1062,12 +1090,19 @@ function HomeContent() {
                                 <>
                                   <ArrowRight className="h-2.5 w-2.5 text-slate-600" />
                                   <span className="font-semibold text-emerald-400">
-                                    {formatBytes(item.result.compressedSize)} (
-                                    {Math.round(
-                                      ((item.file.size - item.result.compressedSize) / item.file.size) * 100
-                                    )}
-                                    % lebih hemat)
+                                    {formatBytes(item.result.compressedSize)}
                                   </span>
+                                  {item.file.size > item.result.compressedSize ? (
+                                    <span className="text-emerald-400/90 text-[10px]">
+                                      ({Math.round(((item.file.size - item.result.compressedSize) / item.file.size) * 100)}% lebih hemat)
+                                    </span>
+                                  ) : null}
+                                  {mode === 'target' && item.result.compressedSize <= targetKb * 1024 && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold border border-emerald-500/30">
+                                      <Check className="h-2.5 w-2.5" />
+                                      <span>Lolos &le;{targetKb} KB</span>
+                                    </span>
+                                  )}
                                 </>
                               )}
                             </div>
