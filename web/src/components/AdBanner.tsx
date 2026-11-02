@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ExternalLink, Sparkles } from 'lucide-react';
+import { ExternalLink, Tag } from 'lucide-react';
 import { getMonetagDirectLink } from '@/lib/monetag';
 
 interface AdBannerProps {
@@ -71,25 +71,25 @@ export default function AdBanner({
         href={directLinkUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="group block relative overflow-hidden rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-950/40 via-slate-900/80 to-indigo-950/40 p-4 sm:p-5 hover:border-blue-500/60 transition-all shadow-lg hover:shadow-blue-500/10 cursor-pointer"
+        className="group block relative overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 hover:border-slate-700 hover:bg-slate-900/80 transition-all shadow-md cursor-pointer"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/30 group-hover:scale-105 transition-transform">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600/10 text-blue-400 border border-blue-500/20 group-hover:scale-105 transition-transform">
+              <Tag className="h-5 w-5" />
             </div>
             <div className="space-y-0.5">
-              <h4 className="text-sm font-bold text-white group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
-                <span>Penawaran Spesial &amp; Rekomendasi Hari Ini</span>
+              <h4 className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors flex items-center gap-1.5">
+                <span>Rekomendasi &amp; Penawaran Mitra Hari Ini</span>
               </h4>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Klaim reward gratis, bonus aplikasi produktivitas, dan penawaran terbaik dari mitra sponsor kami.
+                Temukan utilitas digital terkurasi, bonus produktivitas, dan penawaran dari sponsor resmi OmniPic.
               </p>
             </div>
           </div>
 
-          <div className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 group-hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors w-full sm:w-auto justify-center">
-            <span>Buka Penawaran</span>
+          <div className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 group-hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition-colors w-full sm:w-auto justify-center">
+            <span>Kunjungi Mitra</span>
             <ExternalLink className="h-3.5 w-3.5" />
           </div>
         </div>

@@ -542,14 +542,14 @@ function HomeContent() {
         {/* ========================================================================= */}
         {/* HERO PROMOTION SECTION */}
         {/* ========================================================================= */}
-        <section className="relative overflow-hidden border-b border-slate-900 bg-gradient-to-b from-blue-950/20 via-slate-950 to-slate-950 py-12 sm:py-16">
-          <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 space-y-6">
-            <div className="space-y-3">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
+        <section className="relative overflow-hidden border-b border-slate-900 bg-gradient-to-b from-blue-950/20 via-slate-950 to-slate-950 py-8 sm:py-12">
+          <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 space-y-5">
+            <div className="space-y-2.5">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                 Studio Serbabisa: Kompres Foto, Olah Video &amp; Unduh Media
               </h1>
-              <p className="max-w-2xl mx-auto text-sm sm:text-base text-slate-400 leading-relaxed">
-                Kecilkan foto ke target 200 KB (standar resmi CPNS &amp; KTP), ubah ukuran pas foto, buat animasi GIF dari rekaman video, dan unduh media publik secara instan. 100% aman di peramban Anda.
+              <p className="max-w-2xl mx-auto text-xs sm:text-sm text-slate-400 leading-relaxed">
+                Kecilkan foto pas 200 KB untuk SSCASN CPNS, ubah ukuran pas foto 3x4 &amp; 4x6, buat animasi GIF, dan unduh media publik secara instan. 100% diproses langsung di browser Anda.
               </p>
             </div>
 
@@ -608,7 +608,62 @@ function HomeContent() {
           {/* ===================================================================== */}
           {activeTool === 'photo' && (
             <div className="space-y-6">
-              {/* Quick Preset Buttons */}
+              {/* 1. Drag and Drop Zone (Top First) */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingPhoto(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDraggingPhoto(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingPhoto(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    appendFiles(Array.from(e.dataTransfer.files));
+                  }
+                }}
+                onClick={() => photoInputRef.current?.click()}
+                className={`relative flex flex-col items-center justify-center p-8 sm:p-12 rounded-2xl border-2 border-dashed transition-all cursor-pointer ${
+                  isDraggingPhoto
+                    ? 'border-blue-500 bg-blue-950/20'
+                    : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
+                }`}
+              >
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.heic,.heif"
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      appendFiles(Array.from(e.target.files));
+                      e.target.value = '';
+                    }
+                  }}
+                  className="hidden"
+                />
+
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10 text-blue-500 mb-3">
+                  <Upload className="h-6 w-6" />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-white mb-1 text-center">
+                  Tarik foto ke sini atau klik untuk memilih file
+                </h3>
+                <p className="text-xs text-slate-400 mb-4 text-center max-w-md">
+                  Mendukung JPG, PNG, WebP, dan kamera iPhone (.HEIC). 100% diproses langsung di browser Anda.
+                </p>
+                <button
+                  type="button"
+                  className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-md transition-colors"
+                >
+                  Pilih Foto dari Perangkat
+                </button>
+              </div>
+
+              {/* 2. Quick Preset Buttons */}
               <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-300 font-mono">
@@ -936,61 +991,6 @@ function HomeContent() {
                 </div>
               </div>
 
-              {/* Drag and Drop Zone */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDraggingPhoto(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setIsDraggingPhoto(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDraggingPhoto(false);
-                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                    appendFiles(Array.from(e.dataTransfer.files));
-                  }
-                }}
-                onClick={() => photoInputRef.current?.click()}
-                className={`relative flex flex-col items-center justify-center p-8 sm:p-12 rounded-xl border-2 border-dashed transition-all cursor-pointer ${
-                  isDraggingPhoto
-                    ? 'border-blue-500 bg-blue-950/20'
-                    : 'border-slate-800 hover:border-slate-700 bg-slate-900/40 hover:bg-slate-900/60'
-                }`}
-              >
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*,.heic,.heif"
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      appendFiles(Array.from(e.target.files));
-                      e.target.value = '';
-                    }
-                  }}
-                  className="hidden"
-                />
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600/10 text-blue-500 mb-3">
-                  <Upload className="h-6 w-6" />
-                </div>
-                <h3 className="text-sm sm:text-base font-semibold text-white mb-1">
-                  Tarik foto ke sini atau klik untuk memilih file
-                </h3>
-                <p className="text-xs text-slate-400 mb-4 text-center max-w-md">
-                  Mendukung JPG, PNG, WebP, dan format kamera iPhone (.HEIC). Semua diproses lokal tanpa batas.
-                </p>
-                <button
-                  type="button"
-                  className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md transition-colors"
-                >
-                  Pilih Foto dari Perangkat
-                </button>
-              </div>
-
               {/* File Queue Section */}
               {files.length > 0 && (
                 <div className="space-y-4 pt-4 border-t border-slate-800">
@@ -998,7 +998,15 @@ function HomeContent() {
                     <span className="text-sm font-semibold text-white">
                       Daftar Antrean ({files.length} Foto)
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => photoInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      >
+                        <Upload className="h-3.5 w-3.5 text-blue-400" />
+                        <span>+ Tambah Foto</span>
+                      </button>
+
                       <button
                         onClick={clearAllFiles}
                         className="px-3 py-1.5 rounded-lg border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white text-xs font-medium transition-colors"
@@ -1550,55 +1558,36 @@ function HomeContent() {
         {/* PURE PROMOTIONAL & FEATURE SHOWCASE SECTION */}
         {/* ========================================================================= */}
         <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 space-y-12">
-          {/* 4 Core Value Cards */}
-          <div className="space-y-4">
-            <div className="text-center space-y-1.5 max-w-xl mx-auto">
-              <h2 className="text-xl sm:text-2xl font-bold text-white">
-                Mengapa Memilih OmniPic Studio?
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Solusi satu atap untuk manipulasi dokumen visual tanpa kerumitan instalasi aplikasi berat.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2 hover:border-slate-700 transition-colors">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600/20 text-emerald-400">
-                  <Shield className="h-5 w-5" />
+          {/* 3 Core Trust Pillars */}
+          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/30 p-6 sm:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+              <div className="space-y-2 md:pr-6">
+                <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm">
+                  <Shield className="h-4 w-4" />
+                  <span>100% Privasi di Browser</span>
                 </div>
-                <h3 className="text-sm font-semibold text-white">100% Privasi di Browser</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  File diproses langsung di perangkat Anda tanpa pernah diunggah ke server cloud. Aman untuk KTP, SIM &amp; Ijazah.
+                  Foto dan dokumen tidak pernah diunggah ke server cloud. Semua kompresi dan manipulasi berjalan langsung di memori perangkat Anda.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2 hover:border-slate-700 transition-colors">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/20 text-blue-400">
-                  <Zap className="h-5 w-5" />
+              <div className="space-y-2 pt-4 md:pt-0 md:px-6">
+                <div className="flex items-center gap-2 text-blue-400 font-semibold text-sm">
+                  <Zap className="h-4 w-4" />
+                  <span>Akurasi Target KB Resmi</span>
                 </div>
-                <h3 className="text-sm font-semibold text-white">Target Pas 200 KB CPNS</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Algoritma biner cerdas mengecilkan ukuran file tepat di bawah batas SSCASN tanpa merusak ketajaman foto.
+                  Pencarian biner adaptif memastikan ukuran file berada tepat di bawah batas ketentuan pendaftaran CPNS/SSCASN tanpa membuat wajah buram.
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2 hover:border-slate-700 transition-colors">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600/20 text-indigo-400">
-                  <Film className="h-5 w-5" />
+              <div className="space-y-2 pt-4 md:pt-0 md:pl-6">
+                <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm">
+                  <Archive className="h-4 w-4" />
+                  <span>Bebas Kuota &amp; Ringan</span>
                 </div>
-                <h3 className="text-sm font-semibold text-white">Studio Video &amp; GIF</h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Tangkap foto resolusi tinggi dari video rekaman atau ubah klip menjadi animasi GIF yang ringan dibagikan.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-2 hover:border-slate-700 transition-colors">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-600/20 text-amber-400">
-                  <DownloadCloud className="h-5 w-5" />
-                </div>
-                <h3 className="text-sm font-semibold text-white">Media Grabber Cerdas</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Ambil thumbnail YouTube 1080p HD, simpan foto Instagram publik, dan langsung edit di studio tanpa download manual.
+                  Tanpa registrasi akun atau langganan berbayar. Ekspor puluhan foto sekaligus menjadi satu arsip ZIP atau satukan dalam dokumen PDF rapi.
                 </p>
               </div>
             </div>
